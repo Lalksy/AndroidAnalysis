@@ -3,9 +3,10 @@ import os
 import sys
 import logging
 import argparse
+import re
 
-
-
+# RE picks up static field declarations
+staticfielddecl = '(static\s+(\w+)\s+(\w+)\s*(=([^;]+))?;)'
 
 def main():
     parser = argparse.ArgumentParser()
@@ -18,6 +19,8 @@ def main():
     classes = [file[file.rfind('/'):] for file in analysisfiles['classfiles']]
     print("java class files of interest: \n {} \n".format(classes))
     print("manifests: \n {} \n".format(analysisfiles['manifests']))
+
+    findall_java_decls(analysisfiles['classfiles'])
 
 def extract_analysisfiles(walk):
     """
@@ -34,6 +37,36 @@ def extract_analysisfiles(walk):
                 if file == 'AndroidManifest.xml':
                     app['manifests'].append(dir+'/'+file)
     return app
+
+def find_java_decls(file):
+"""
+walks through file line by line and looks for static field declarations.
+If found, state of the field is tracked through the rest of the walk 
+in staticfields dict.
+"""
+    staticfields = {}
+    with open(file, 'r') as fd:
+        while True:
+            x = fd.readline()
+            if x == '':
+                break;
+            decl = re.findall(staticfielddecl,x)
+            if(decl):
+                staticfields[decl[0][2]] = decl[0][4]
+            for s in staticfields.keys():
+                ass = re.findall(fmt_ass(s),x)
+                if(ass):
+                    print(ass[0][0])
+                    staticfields[s] = ass[0][1]
+
+def fmt_ass(field):
+    return "({}\s*=([^;]+);)".format(field)
+
+def findall_java_decls(files):
+    for file in files:
+        find_java_decls(file)
+    
+
 
 if __name__ == "__main__":
     main()
