@@ -1,0 +1,101 @@
+Activity:
+An activity is a single, focused thing that the user can do. Almost all activities interact with the user, so the Activity class takes care of creating a window for you in which you can place your UI with setContentView(View). While activities are often presented to the user as full-screen windows, they can also be used in other ways: as floating windows (via a theme with windowIsFloating set) or embedded inside of another activity (using ActivityGroup). 
+
+View:
+A View occupies a rectangular area on the screen and is responsible for drawing and event handling. View is the base class for widgets, which are used to create interactive UI components (buttons, text fields, etc.). The ViewGroup subclass is the base class for layouts, which are invisible containers that hold other Views (or other ViewGroups) and define their layout properties.
+
+Memory Leak:
+A common cause of crashes are memory leaks. This particular problem can manifest itself in various forms. In most cases we see a steady increase in memory usage until the app cannot allocate more resources and inevitably crashes. In Java this often results in an OutOfMemoryException being thrown. In some rare cases, leaked classes can even stick around for long enough to receive registered callbacks, causing some really strange bugs and all too often throw the notorious IllegalStateException.
+
+Listener:
+An event listener is an interface in the View class that contains a single callback method. These methods will be called by the Android framework when the View to which the listener has been registered is triggered by user interaction with the item in the UI.
+
+Both (NON-STATIC) inner class and anonymous class hold a reference to the enclosing class (activity).
+
+Android memory leak patterns:
+
+1. Static Reference
+
+A static reference lives as long as your app is in memory. An activity has lifecycles which are usually destroyed and re-created multiple times during you app’s lifecycle. If you reference an activity directly or indirectly from a static reference, the activity would not be garbage collected after it is destroyed. An activity can range from a few kilo bytes to many mega bytes depending on what contents are in it. If it has a large view hierarchy or high resolution images, it can make a large chunk of memory leaked.
+
+(1). static view: 
+static TextView label;
+label = new TextView(this);
+
+-> 'this' refers to LeakActivityToStaticViewActivity, which is an activity, so now there is a static reference to an activity. 
+
+(2). static activity:
+static Activity activity = null;
+if (activity == null) {
+            activity = this;
+        }
+
+-> 'this' refers to LeakActivityToStaticVariableActivity, which is an activity, so now there is a static reference to an activity. 
+
+(3). singleton class 
+
+private static SomeSingletonManager someSingletonManagerSingleton;
+someSingletonManagerSingleton = new SomeSingletonManager(context);
+someSingletonManager = SomeSingletonManager.getInstance(this);
+
+if (this.context == context) {
+            this.context = null;
+        }
+someSingletonManager.unregister(this)
+
+-> 'this' refers to an activity class and another class now has a static reference to this activity. 
+
+
+
+(4). static instance of a inner class of the activity:
+
+class SomeInnerClass {
+    }
+
+private static SomeInnerClass someInnerClass;
+someInnerClass = new SomeInnerClass();
+
+-> this class definition is inside an activity class. So now there is a static reference to an inner class of an activity. 
+
+2. Inner class / anonymous class 
+-> make it static 
+
+3. Worker Thread
+
+Async Task:
+needs to be static 
+
+4. Thread itself
+
+Either interrupt or close the thread 
+
+5. Listeners 
+unregister your listeners in onPause/ onStop/ onDestroy method
+
+
+
+
+1. Terms
+2. Previous Work (dynamic tools)
+3. Patterns w/ Examples
+
+4. Our algorithm 
+5. Our results 
+6. Our conclusions  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
