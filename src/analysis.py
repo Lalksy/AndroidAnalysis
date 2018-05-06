@@ -108,7 +108,8 @@ def file_analysis(file):
         tree = gen_java_ast(code_contents)
         #print_ast(tree)
         lifecycle_nodes = get_lifecycle_nodes(tree)
-        find_leak_preconditions(tree, lifecycle_nodes, file)
+        static_fields = find_leak_preconditions(tree, lifecycle_nodes, file)
+        find_leak_fixes(tree, lifecycle_nodes, static_fields, file)
 
 def gen_java_ast(code_contents):
     """
@@ -160,8 +161,8 @@ def find_leak_preconditions(tree, lifecycle_nodes, file):
     lifecycle_nodes: map from lifecycle names to their AST nodes
     file: the file containing CompilationUnit
 
-    So far will retrieve the static fields and threads started in
-    early lifecycle methods of the CompilationUnit (java activity class).
+    So far will retrieve the static fields declarations and track them
+    in leaks dict.
     """
     static_fields = find_static_fields_from_name(tree, file)
     # updates which patterns to track
@@ -177,6 +178,20 @@ def find_leak_preconditions(tree, lifecycle_nodes, file):
             for n,t,v,l in assigns:
                 leaks[file][n] = [t,i,l]
             threads = find_thread_start(node, file)
+            for n,t,v,l in threads:
+                leaks[file][n] = [t,v,l]
+    return static_fields
+
+def find_leak_fixes(tree, lifecycle_nodes, static_fields, file):
+    for method in deallocation_cycles:
+        if method in lifecycle_nodes.keys():
+            node = lifecycle_nodes[method]
+            assigns = find_static_assignments(node, static_fields)
+            #print(assigns)
+            # update pattern state
+            for n,t,v,l in assigns:
+                leaks[file][n] = [t,i,l]
+            threads = find_thread_stop(node, file)
             for n,t,v,l in threads:
                 leaks[file][n] = [t,v,l]
 
@@ -203,18 +218,36 @@ def find_thread_start(tree, file) :
              (leak pattern name, type leaked, linenumber)
     """
     thread_pos = []
+    start_inovoc_pattern = re.compile('([\w\(\)]+)\.start')
     for path, node in tree.filter(javalang.tree.MethodInvocation):
         if (node.member == 'start'):
             line = all_files[file][node.position[0]]
             pat_type = "THREAD"
-            start = node.position[1]-1
-            end = line.find('start')-1
+            if (javalang.tree.ClassCreator == type(path[-2])): # Parent is ClassCreator
+                #print("Thread is in abstract class. Likely leak at ", node.position[0])
+                pat_type = "ANON THREAD"
+            leak_pattern_name = start_inovoc_pattern.findall(line)[0]
+            thread_pos.append((leak_pattern_name, pat_type, "THREAD", node.position[0]))
+    return thread_pos
+
+def find_thread_stop(tree, file) :
+    """
+    tree: javalang AST node
+    returns: list of threads stopped in the node
+             (leak pattern name, type leaked, linenumber)
+    """
+    thread_pos = []
+    stop_inovoc_pattern = re.compile('([\w\(\)]+)\.interrupt')
+    for path, node in tree.filter(javalang.tree.MethodInvocation):
+        if (node.member == 'interrupt'):
+            line = all_files[file][node.position[0]]
+            pat_type = "THREAD"
             if (javalang.tree.ClassCreator == type(path[-2])): # Parent is ClassCreator
                 #print("Thread is in abstract class. Likely leak at ", node.position[0])
                 pat_type = "ANON THREAD"
                 start = 0
-            leak_pattern_name = line[start:end]
-            thread_pos.append((leak_pattern_name, pat_type, "THREAD", node.position[0]))
+            leak_pattern_name = stop_inovoc_pattern.findall(line)[0]
+            thread_pos.append((leak_pattern_name, pat_type, "NONE", node.position[0]))
     return thread_pos
 
 def find_static_fields_from_name(tree, file):
