@@ -11,6 +11,8 @@ staticfielddecl = '(static\s+(\w+)\s+(\w+)\s*(=([^;]+))?;)'
 
 # Lifecycle methods
 lifecycle = ['onCreate', 'onStart', 'onRestart', 'onResume', 'onPause', 'onStop', 'onDestroy']
+allocation_cycles = ['onCreate', 'onStart', 'onRestart', 'onResume']
+deallocation_cycles = ['onPause', 'onStop', 'onDestroy']
 
 def main():
     parser = argparse.ArgumentParser()
@@ -22,18 +24,18 @@ def main():
     analysisfiles = extract_analysisfiles(g)
     classes = [file[file.rfind('/'):] for file in analysisfiles['classfiles']]
 
-    print("java class files of interest: \n {} \n".format(classes))
+    #print("java class files of interest: \n {} \n".format(classes))
     #print("manifests: \n {} \n".format(analysisfiles['manifests']))
 
     # findall_java_decls(analysisfiles['classfiles'])
 
-    #for file in analysisfiles['classfiles']:
-    file = analysisfiles['classfiles'][0]
-    print("---AST {}".format(file[file.rfind('/'):]))
-    file_analysis(file)
-    #print("---regexp")
-    #find_java_decls(file)
-    #print("\n")
+    for file in analysisfiles['classfiles']:
+    #file = analysisfiles['classfiles'][0]
+        print("---AST {}".format(file[file.rfind('/'):]))
+        file_analysis(file)
+        #print("---regexp")
+        #find_java_decls(file)
+        #print("\n")
 
 def extract_analysisfiles(walk):
     """
@@ -76,13 +78,9 @@ def file_analysis(file):
     with open(file, 'r') as fd:
         code_contents = fd.read()
         tree = gen_java_ast(code_contents)
-        print_ast(tree)
-        fields = find_fields(tree)
-        #print(fields)
-        static_fields = find_static_fields_from_name(fields, file)
-        #print(static_fields)
-        threads = find_thread_start(tree)
-        print(threads)
+        #print_ast(tree)
+        lifecycle_nodes = get_lifecycle_nodes(tree)
+        find_leak_preconditions(tree, lifecycle_nodes, file)
 
 def gen_java_ast(code_contents):
     """
@@ -102,7 +100,24 @@ def print_ast(tree):
         spacestr = ""
         for i in range(len(path)):
             spacestr+="    "
-        print("{}{}".format(spacestr, node))
+        print("{}{} {}".format(spacestr, node, node.position))
+
+def get_lifecycle_nodes(tree):
+    lifecycle_nodes = {}
+    for path, node in tree.filter(javalang.tree.MethodDeclaration):
+        if(node.name in lifecycle):
+            #print(node.name)
+            lifecycle_nodes[node.name] = node
+    return lifecycle_nodes
+
+def find_leak_preconditions(tree, lifecycle_nodes, file):
+    static_fields = find_static_fields_from_name(tree, file)
+    #print(static_fields)
+    for method in allocation_cycles:
+        if method in lifecycle_nodes.keys():
+            node = lifecycle_nodes[method]
+            threads = find_thread_start(node)
+            print(threads)
 
 def find_fields(tree) :
     """
@@ -121,13 +136,16 @@ def find_thread_start(tree) :
     """
     Walks over ast and returns pos of possibly leaked threads
     """
-    pos = []
+    thread_pos = []
     for path, node in tree.filter(javalang.tree.MethodInvocation):
         if (node.member == 'start'):
-            return node.position
-    return
+            if (javalang.tree.ClassCreator in [type(x) for x in path]):
+                print("Thread is in abstract class. Likely leak at ", node.position[0])
+            thread_pos.append(node.position[0])
+    return thread_pos
 
-def find_static_fields_from_name(names, file):
+def find_static_fields_from_name(tree, file):
+    names = find_fields(tree)
     static_fields = []
     static_pat = re.compile('((\w*\s+)*)static ')
     for name, init, pos in names:
