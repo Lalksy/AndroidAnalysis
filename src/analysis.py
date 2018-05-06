@@ -5,6 +5,10 @@ import logging
 import argparse
 import re
 import javalang
+from collections import defaultdict 
+
+# stores all lines of all files in a big dictionary 
+all_files = defaultdict(dict)
 
 # RE picks up static field declarations
 staticfielddecl = '(static\s+(\w+)\s+(\w+)\s*(=([^;]+))?;)'
@@ -20,6 +24,7 @@ def main():
     e = os.path.expanduser(args.app_dir)
     g = os.walk(e)
     analysisfiles = extract_analysisfiles(g)
+    print(analysisfiles['classfiles'][3])
     #classes = [file[file.rfind('/'):] for file in analysisfiles['classfiles']]
 
     #print("java class files of interest: \n {} \n".format(classes))
@@ -27,8 +32,8 @@ def main():
 
     # findall_java_decls(analysisfiles['classfiles'])
 
-    tree = gen_java_ast(analysisfiles['classfiles'][9])
-    print_ast(tree)
+    tree = gen_java_ast(analysisfiles['classfiles'][3])
+    print_ast(tree, analysisfiles['classfiles'][3])
 
 def extract_analysisfiles(walk):
     """
@@ -90,12 +95,21 @@ def gen_java_ast(file):
     generates and returns the java ast using javaparser library
     """
     with open(file, 'r') as fd:
+        all_lines = fd.readlines()
+        lineNum = 1
+        for eachLine in all_lines:
+            all_files[file][lineNum] = eachLine
+            lineNum += 1
+
+    with open(file, 'r') as fd:
         code_contents = fd.read()
         tokens = javalang.tokenizer.tokenize(code_contents)
+        #copy = list(tokens)
+        #print(copy)
         parser = javalang.parser.Parser(tokens)
         return parser.parse()
 
-def print_ast(tree):
+def print_ast(tree, file):
     """
     prints the ast with indentation to show children
     """
@@ -103,7 +117,12 @@ def print_ast(tree):
         spacestr = ""
         for i in range(len(path)):
             spacestr+="    "
-        print("{}{}".format(spacestr, node))
+        print("{}{}  {}".format(spacestr, node, node.position))
+        if type(node) == javalang.tree.ClassCreator:
+            print(node.constructor_type_arguments)
+            print(node.arguments)
+            for node in node.body:
+                print(node, node.position)
 
 def build_sym_table(tree) :
     """
