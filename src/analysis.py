@@ -44,13 +44,14 @@ def main():
     # findall_java_decls(analysisfiles['classfiles'])
 
     for file in analysisfiles['classfiles']:
-    #file = analysisfiles['classfiles'][6]
+    #file = analysisfiles['classfiles'][11]
         #print("---AST {}".format(file[file.rfind('/'):]))
         file_analysis(file)
         #print("---regexp")
         #find_java_decls(file)
         #print("\n")
-    print_2d_dict(leaks)
+    flatten_leaks(leaks)
+    report_leaks(leaks)
 
 def extract_analysisfiles(walk):
     """
@@ -140,6 +141,30 @@ def print_2d_dict(d):
             print("    {}: {}".format(k2,v2))
         print("\n")
 
+def flatten_leaks(d):
+    for k,v in d.items():
+        for k2, v2 in v.items():
+            if v2[0] == 'STATIC FIELD':
+                if(v2[1]):
+                    for path, node in v2[1].filter(javalang.tree.This):
+                        v2[0] = 'STATIC FIELD HIGH WARNING'
+                        v2[1] = 'this'
+            if v2[0] == 'THREAD':
+                if(v2[1]):
+                    v2[0] = 'THREAD CLOSE WARNING'
+            if v2[0] == 'ANON THREAD':
+                if(v2[1]):
+                    v2[0] = 'ANON THREAD WARNING'
+
+
+def report_leaks(d):
+    for k,v in d.items():
+        filename = k[k.rfind('/'):]
+        for k2, v2 in v.items():
+            if(v2[1]):
+                print("In class {}: ".format(filename))
+                print("    {}: {} leaks {} in line {}".format(v2[0], k2, v2[1], v2[2]))
+
 
 def get_lifecycle_nodes(tree):
     """
@@ -176,7 +201,7 @@ def find_leak_preconditions(tree, lifecycle_nodes, file):
             #print(assigns)
             # update pattern state
             for n,t,v,l in assigns:
-                leaks[file][n] = [t,i,l]
+                leaks[file][n] = [t,v,l]
             threads = find_thread_start(node, file)
             for n,t,v,l in threads:
                 leaks[file][n] = [t,v,l]
@@ -247,7 +272,7 @@ def find_thread_stop(tree, file) :
                 pat_type = "ANON THREAD"
                 start = 0
             leak_pattern_name = stop_inovoc_pattern.findall(line)[0]
-            thread_pos.append((leak_pattern_name, pat_type, "NONE", node.position[0]))
+            thread_pos.append((leak_pattern_name, pat_type, None, node.position[0]))
     return thread_pos
 
 def find_static_fields_from_name(tree, file):
