@@ -5,6 +5,10 @@ import logging
 import argparse
 import re
 import javalang
+from collections import defaultdict
+
+# stores all lines of all files in a big two-level dictionary
+all_files = defaultdict(dict)
 
 # RE picks up static field declarations
 staticfielddecl = '(static\s+(\w+)\s+(\w+)\s*(=([^;]+))?;)'
@@ -14,6 +18,7 @@ lifecycle = ['onCreate', 'onStart', 'onRestart', 'onResume', 'onPause', 'onStop'
 allocation_cycles = ['onCreate', 'onStart', 'onRestart', 'onResume']
 deallocation_cycles = ['onPause', 'onStop', 'onDestroy']
 
+# Our toplevel driver
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("app_dir", type=str, help="a pathanme")
@@ -22,7 +27,8 @@ def main():
     e = os.path.expanduser(args.app_dir)
     g = os.walk(e)
     analysisfiles = extract_analysisfiles(g)
-    classes = [file[file.rfind('/'):] for file in analysisfiles['classfiles']]
+    print(analysisfiles['classfiles'][3])
+    #classes = [file[file.rfind('/'):] for file in analysisfiles['classfiles']]
 
     #print("java class files of interest: \n {} \n".format(classes))
     #print("manifests: \n {} \n".format(analysisfiles['manifests']))
@@ -39,9 +45,11 @@ def main():
 
 def extract_analysisfiles(walk):
     """
-    files: a generator for a filesystem walk
+    walk: a generator for a filesystem walk
+    side effects: fills all_files with mapping from file/linenumber to line contents
     returns:
         app: a dictionary containing the app manifest and java class files
+
     """
     app = { 'classfiles': [], 'manifests': [] }
     for dir,dirs,files in walk:
@@ -51,6 +59,14 @@ def extract_analysisfiles(walk):
                     app['classfiles'].append(dir+'/'+file)
                 if file == 'AndroidManifest.xml':
                     app['manifests'].append(dir+'/'+file)
+
+    for file in app['classfiles']:
+        with open(file, 'r') as fd:
+            all_lines = fd.readlines()
+            lineNum = 1
+            for eachLine in all_lines:
+                all_files[file][lineNum] = eachLine
+                lineNum += 1
     return app
 
 def find_java_decls(file):
@@ -84,17 +100,19 @@ def file_analysis(file):
 
 def gen_java_ast(code_contents):
     """
-    generates and returns the java ast using javaparser library
+    code_contents: string of valid java code
+    returns: the java AST genertaed by javaparser library
     """
-    #print(code_contents)
     tokens = javalang.tokenizer.tokenize(code_contents)
+    #copy = list(tokens)
+    #print(copy)
     parser = javalang.parser.Parser(tokens)
     return parser.parse()
 
-
 def print_ast(tree):
     """
-    prints the ast with indentation to show children
+    tree: javaparser ast
+    side effects: prints the AST with indentation to show children
     """
     for path, node in tree:
         spacestr = ""
@@ -103,6 +121,12 @@ def print_ast(tree):
         print("{}{} {}".format(spacestr, node, node.position))
 
 def get_lifecycle_nodes(tree):
+    """
+    tree: node in javaparser AST
+    returns:
+        lifecycle_nodes: dict containing mapping from lifecycle method names to
+        the node in ths AST defining the method
+    """
     lifecycle_nodes = {}
     for path, node in tree.filter(javalang.tree.MethodDeclaration):
         if(node.name in lifecycle):
@@ -111,8 +135,16 @@ def get_lifecycle_nodes(tree):
     return lifecycle_nodes
 
 def find_leak_preconditions(tree, lifecycle_nodes, file):
+    """
+    tree: javalang CompilationUnit
+    lifecycle_nodes: map from lifecycle names to their AST nodes
+    file: the file containing CompilationUnit
+
+    So far will retrieve the static fields and threads started in
+    early lifecycle methods of the CompilationUnit (java activity class).
+    """
     static_fields = find_static_fields_from_name(tree, file)
-    #print(static_fields)
+    print(static_fields)
     for method in allocation_cycles:
         if method in lifecycle_nodes.keys():
             node = lifecycle_nodes[method]
@@ -121,7 +153,10 @@ def find_leak_preconditions(tree, lifecycle_nodes, file):
 
 def find_fields(tree) :
     """
-    Walks over ast and returns the name of any fields
+    tree: javaland AST
+    returns:
+        fields: list of fields belonging to classes in tree
+                (name, initializer value, linenumber in file)
     """
     fields = []
     for path, node in tree.filter(javalang.tree.FieldDeclaration):
@@ -134,7 +169,8 @@ def find_fields(tree) :
 
 def find_thread_start(tree) :
     """
-    Walks over ast and returns pos of possibly leaked threads
+    tree: javalang AST node
+    returns: list of the lines where threads are started in the node
     """
     thread_pos = []
     for path, node in tree.filter(javalang.tree.MethodInvocation):
@@ -145,17 +181,20 @@ def find_thread_start(tree) :
     return thread_pos
 
 def find_static_fields_from_name(tree, file):
+    """
+    tree: javalang AST node
+    file: filename containing the code for tree
+    returns: list of fields that are delared as static
+             (name, initializer, linnumber in file)
+    """
     names = find_fields(tree)
     static_fields = []
     static_pat = re.compile('((\w*\s+)*)static ')
     for name, init, pos in names:
-        with open(file, 'r') as fd:
-            linenum = pos[0]-1
-            lines = fd.readlines()
-            x = lines[linenum]
-            #print(x, linenum)
-            if(static_pat.match(x)):
-                static_fields.append((name, init, linenum))
+        linenum = pos[0]
+        x = all_files[file][linenum]
+        if(static_pat.match(x)):
+            static_fields.append((name, init, linenum))
     return static_fields
 
 def build_sym_table(tree) :
@@ -204,6 +243,9 @@ def fmt_ass(field):
     return "({}\s*=([^;]+);)".format(field)
 
 def findall_java_decls(files):
+    """
+    for checking work on static declaration pattern matching
+    """
     for file in files:
         find_java_decls(file)
 
