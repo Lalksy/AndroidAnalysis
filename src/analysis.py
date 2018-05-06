@@ -10,6 +10,11 @@ from collections import defaultdict
 # stores all lines of all files in a big two-level dictionary
 all_files = defaultdict(dict)
 
+# stores and tracks state of potential memory leaks in two-level dictionary
+#    key1: file
+#    key2: name assoc with leak
+leaks = defaultdict(dict)
+
 # RE picks up static field declarations
 staticfielddecl = '(static\s+(\w+)\s+(\w+)\s*(=([^;]+))?;)'
 
@@ -17,6 +22,9 @@ staticfielddecl = '(static\s+(\w+)\s+(\w+)\s*(=([^;]+))?;)'
 lifecycle = ['onCreate', 'onStart', 'onRestart', 'onResume', 'onPause', 'onStop', 'onDestroy']
 allocation_cycles = ['onCreate', 'onStart', 'onRestart', 'onResume']
 deallocation_cycles = ['onPause', 'onStop', 'onDestroy']
+
+# Pattern type
+pattern_types = ['STATIC FIELD', 'ANON THREAD', 'THREAD']
 
 # Our toplevel driver
 def main():
@@ -27,7 +35,7 @@ def main():
     e = os.path.expanduser(args.app_dir)
     g = os.walk(e)
     analysisfiles = extract_analysisfiles(g)
-    print(analysisfiles['classfiles'][3])
+    #print(analysisfiles['classfiles'][11])
     #classes = [file[file.rfind('/'):] for file in analysisfiles['classfiles']]
 
     #print("java class files of interest: \n {} \n".format(classes))
@@ -36,12 +44,13 @@ def main():
     # findall_java_decls(analysisfiles['classfiles'])
 
     for file in analysisfiles['classfiles']:
-    #file = analysisfiles['classfiles'][0]
-        print("---AST {}".format(file[file.rfind('/'):]))
+    #file = analysisfiles['classfiles'][6]
+        #print("---AST {}".format(file[file.rfind('/'):]))
         file_analysis(file)
         #print("---regexp")
         #find_java_decls(file)
         #print("\n")
+    print_2d_dict(leaks)
 
 def extract_analysisfiles(walk):
     """
@@ -71,6 +80,8 @@ def extract_analysisfiles(walk):
 
 def find_java_decls(file):
     """
+    Deprecated:
+
     walks through file line by line and looks for static field declarations.
     If found, state of the field is tracked through the rest of the walk
     in staticfields dict.
@@ -93,6 +104,7 @@ def find_java_decls(file):
 def file_analysis(file):
     with open(file, 'r') as fd:
         code_contents = fd.read()
+        #print(code_contents)
         tree = gen_java_ast(code_contents)
         #print_ast(tree)
         lifecycle_nodes = get_lifecycle_nodes(tree)
@@ -120,6 +132,14 @@ def print_ast(tree):
             spacestr+="    "
         print("{}{} {}".format(spacestr, node, node.position))
 
+def print_2d_dict(d):
+    for k,v in d.items():
+        print(k[k.rfind('/'):])
+        for k2, v2 in v.items():
+            print("    {}: {}".format(k2,v2))
+        print("\n")
+
+
 def get_lifecycle_nodes(tree):
     """
     tree: node in javaparser AST
@@ -144,12 +164,21 @@ def find_leak_preconditions(tree, lifecycle_nodes, file):
     early lifecycle methods of the CompilationUnit (java activity class).
     """
     static_fields = find_static_fields_from_name(tree, file)
-    print(static_fields)
+    # updates which patterns to track
+    for n,t,i,l in static_fields:
+        leaks[file][n] = [t,i,l]
+    # analyze the first half of lifecycle
     for method in allocation_cycles:
         if method in lifecycle_nodes.keys():
             node = lifecycle_nodes[method]
-            threads = find_thread_start(node)
-            print(threads)
+            assigns = find_static_assignments(node, static_fields)
+            #print(assigns)
+            # update pattern state
+            for n,t,v,l in assigns:
+                leaks[file][n] = [t,i,l]
+            threads = find_thread_start(node, file)
+            for n,t,v,l in threads:
+                leaks[file][n] = [t,v,l]
 
 def find_fields(tree) :
     """
@@ -167,17 +196,25 @@ def find_fields(tree) :
             #node.type, node.type.arguments))
     return fields
 
-def find_thread_start(tree) :
+def find_thread_start(tree, file) :
     """
     tree: javalang AST node
-    returns: list of the lines where threads are started in the node
+    returns: list of threads started in the node
+             (leak pattern name, type leaked, linenumber)
     """
     thread_pos = []
     for path, node in tree.filter(javalang.tree.MethodInvocation):
         if (node.member == 'start'):
-            if (javalang.tree.ClassCreator in [type(x) for x in path]):
-                print("Thread is in abstract class. Likely leak at ", node.position[0])
-            thread_pos.append(node.position[0])
+            line = all_files[file][node.position[0]]
+            pat_type = "THREAD"
+            start = node.position[1]-1
+            end = line.find('start')-1
+            if (javalang.tree.ClassCreator == type(path[-2])): # Parent is ClassCreator
+                #print("Thread is in abstract class. Likely leak at ", node.position[0])
+                pat_type = "ANON THREAD"
+                start = 0
+            leak_pattern_name = line[start:end]
+            thread_pos.append((leak_pattern_name, pat_type, "THREAD", node.position[0]))
     return thread_pos
 
 def find_static_fields_from_name(tree, file):
@@ -194,8 +231,23 @@ def find_static_fields_from_name(tree, file):
         linenum = pos[0]
         x = all_files[file][linenum]
         if(static_pat.match(x)):
-            static_fields.append((name, init, linenum))
+            static_fields.append((name, "STATIC FIELD", init, linenum))
     return static_fields
+
+def find_static_assignments(tree, static_fields):
+    """
+    tree: javalang AST node
+    static_fields: list of static fields to track state for
+    returns:
+        assignments: list of assignments to those static fields
+    """
+    assignments = []
+    for path, node in tree.filter(javalang.tree.Assignment):
+        if(type(node.expressionl) == javalang.tree.MemberReference):
+            ref = node.expressionl
+            if ref.member in [f[0] for f in static_fields]:
+                assignments.append((ref.member, "STATIC FIELD", node.value, ref.position[0]))
+    return assignments
 
 def build_sym_table(tree) :
     """
