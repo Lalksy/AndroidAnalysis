@@ -20,15 +20,20 @@ def main():
     e = os.path.expanduser(args.app_dir)
     g = os.walk(e)
     analysisfiles = extract_analysisfiles(g)
-    #classes = [file[file.rfind('/'):] for file in analysisfiles['classfiles']]
+    classes = [file[file.rfind('/'):] for file in analysisfiles['classfiles']]
 
-    #print("java class files of interest: \n {} \n".format(classes))
+    print("java class files of interest: \n {} \n".format(classes))
     #print("manifests: \n {} \n".format(analysisfiles['manifests']))
 
     # findall_java_decls(analysisfiles['classfiles'])
 
-    tree = gen_java_ast(analysisfiles['classfiles'][9])
-    print_ast(tree)
+    #for file in analysisfiles['classfiles']:
+    file = analysisfiles['classfiles'][0]
+    print("---AST {}".format(file[file.rfind('/'):]))
+    file_analysis(file)
+    #print("---regexp")
+    #find_java_decls(file)
+    #print("\n")
 
 def extract_analysisfiles(walk):
     """
@@ -67,33 +72,27 @@ def find_java_decls(file):
                     print(ass[0][0])
                     staticfields[s] = ass[0][1]
 
-def gen_java_ast_simple(file):
-    """
-    Uses javalang to generate a java 8 AST
-    """
-    print(file)
-
+def file_analysis(file):
     with open(file, 'r') as fd:
         code_contents = fd.read()
-        tree = javalang.parse.parse(code_contents)
-        for path, node in tree:
-            spacestr = ""
-            name = ""
-            for i in range(len(path)):
-                spacestr+="    "
-            if (type(node) == javalang.tree.MethodDeclaration):
-                name = node.name
-            print("{}{} {}".format(spacestr, node, name))
+        tree = gen_java_ast(code_contents)
+        print_ast(tree)
+        fields = find_fields(tree)
+        #print(fields)
+        static_fields = find_static_fields_from_name(fields, file)
+        #print(static_fields)
+        threads = find_thread_start(tree)
+        print(threads)
 
-def gen_java_ast(file):
+def gen_java_ast(code_contents):
     """
     generates and returns the java ast using javaparser library
     """
-    with open(file, 'r') as fd:
-        code_contents = fd.read()
-        tokens = javalang.tokenizer.tokenize(code_contents)
-        parser = javalang.parser.Parser(tokens)
-        return parser.parse()
+    #print(code_contents)
+    tokens = javalang.tokenizer.tokenize(code_contents)
+    parser = javalang.parser.Parser(tokens)
+    return parser.parse()
+
 
 def print_ast(tree):
     """
@@ -105,6 +104,42 @@ def print_ast(tree):
             spacestr+="    "
         print("{}{}".format(spacestr, node))
 
+def find_fields(tree) :
+    """
+    Walks over ast and returns the name of any fields
+    """
+    fields = []
+    for path, node in tree.filter(javalang.tree.FieldDeclaration):
+        if(type(node.type) == javalang.tree.ReferenceType):
+            fields.append((node.declarators[0].name, node.declarators[0].initializer, node.position))
+            #print("Name={} dimensions={} initializer={} {} {}".format(node.declarators[0].name, \
+            #node.declarators[0].dimensions, node.declarators[0].initializer,\
+            #node.type, node.type.arguments))
+    return fields
+
+def find_thread_start(tree) :
+    """
+    Walks over ast and returns pos of possibly leaked threads
+    """
+    pos = []
+    for path, node in tree.filter(javalang.tree.MethodInvocation):
+        if (node.member == 'start'):
+            return node.position
+    return
+
+def find_static_fields_from_name(names, file):
+    static_fields = []
+    static_pat = re.compile('((\w*\s+)*)static ')
+    for name, init, pos in names:
+        with open(file, 'r') as fd:
+            linenum = pos[0]-1
+            lines = fd.readlines()
+            x = lines[linenum]
+            #print(x, linenum)
+            if(static_pat.match(x)):
+                static_fields.append((name, init, linenum))
+    return static_fields
+
 def build_sym_table(tree) :
     """
     Incomplete method. Working on building table.
@@ -113,10 +148,6 @@ def build_sym_table(tree) :
         spacestr = ""
         name = ""
         value = ""
-        for i in range(len(path)):
-            spacestr+="    "
-        if (type(node) == javalang.tree.CompilationUnit):
-            name = node.name
         if (type(node) == javalang.tree.MethodDeclaration):
             name = node.name
         if (type(node) == javalang.tree.Literal):
