@@ -5,17 +5,28 @@ import logging
 import argparse
 import re
 import javalang
-from collections import defaultdict 
+from collections import defaultdict
 
-# stores all lines of all files in a big dictionary 
+# stores all lines of all files in a big two-level dictionary
 all_files = defaultdict(dict)
+
+# stores and tracks state of potential memory leaks in two-level dictionary
+#    key1: file
+#    key2: name assoc with leak
+leaks = defaultdict(dict)
 
 # RE picks up static field declarations
 staticfielddecl = '(static\s+(\w+)\s+(\w+)\s*(=([^;]+))?;)'
 
 # Lifecycle methods
 lifecycle = ['onCreate', 'onStart', 'onRestart', 'onResume', 'onPause', 'onStop', 'onDestroy']
+allocation_cycles = ['onCreate', 'onStart', 'onRestart', 'onResume']
+deallocation_cycles = ['onPause', 'onStop', 'onDestroy']
 
+# Pattern type
+pattern_types = ['STATIC FIELD', 'ANON THREAD', 'THREAD']
+
+# Our toplevel driver
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("app_dir", type=str, help="a pathanme")
@@ -24,7 +35,7 @@ def main():
     e = os.path.expanduser(args.app_dir)
     g = os.walk(e)
     analysisfiles = extract_analysisfiles(g)
-    print(analysisfiles['classfiles'][3])
+    #print(analysisfiles['classfiles'][11])
     #classes = [file[file.rfind('/'):] for file in analysisfiles['classfiles']]
 
     #print("java class files of interest: \n {} \n".format(classes))
@@ -32,14 +43,22 @@ def main():
 
     # findall_java_decls(analysisfiles['classfiles'])
 
-    tree = gen_java_ast(analysisfiles['classfiles'][3])
-    print_ast(tree, analysisfiles['classfiles'][3])
+    for file in analysisfiles['classfiles']:
+    #file = analysisfiles['classfiles'][6]
+        #print("---AST {}".format(file[file.rfind('/'):]))
+        file_analysis(file)
+        #print("---regexp")
+        #find_java_decls(file)
+        #print("\n")
+    print_2d_dict(leaks)
 
 def extract_analysisfiles(walk):
     """
-    files: a generator for a filesystem walk
+    walk: a generator for a filesystem walk
+    side effects: fills all_files with mapping from file/linenumber to line contents
     returns:
         app: a dictionary containing the app manifest and java class files
+
     """
     app = { 'classfiles': [], 'manifests': [] }
     for dir,dirs,files in walk:
@@ -49,10 +68,20 @@ def extract_analysisfiles(walk):
                     app['classfiles'].append(dir+'/'+file)
                 if file == 'AndroidManifest.xml':
                     app['manifests'].append(dir+'/'+file)
+
+    for file in app['classfiles']:
+        with open(file, 'r') as fd:
+            all_lines = fd.readlines()
+            lineNum = 1
+            for eachLine in all_lines:
+                all_files[file][lineNum] = eachLine
+                lineNum += 1
     return app
 
 def find_java_decls(file):
     """
+    Deprecated:
+
     walks through file line by line and looks for static field declarations.
     If found, state of the field is tracked through the rest of the walk
     in staticfields dict.
@@ -72,57 +101,153 @@ def find_java_decls(file):
                     print(ass[0][0])
                     staticfields[s] = ass[0][1]
 
-def gen_java_ast_simple(file):
-    """
-    Uses javalang to generate a java 8 AST
-    """
-    print(file)
-
+def file_analysis(file):
     with open(file, 'r') as fd:
         code_contents = fd.read()
-        tree = javalang.parse.parse(code_contents)
-        for path, node in tree:
-            spacestr = ""
-            name = ""
-            for i in range(len(path)):
-                spacestr+="    "
-            if (type(node) == javalang.tree.MethodDeclaration):
-                name = node.name
-            print("{}{} {}".format(spacestr, node, name))
+        #print(code_contents)
+        tree = gen_java_ast(code_contents)
+        #print_ast(tree)
+        lifecycle_nodes = get_lifecycle_nodes(tree)
+        find_leak_preconditions(tree, lifecycle_nodes, file)
 
-def gen_java_ast(file):
+def gen_java_ast(code_contents):
     """
-    generates and returns the java ast using javaparser library
+    code_contents: string of valid java code
+    returns: the java AST genertaed by javaparser library
     """
-    with open(file, 'r') as fd:
-        all_lines = fd.readlines()
-        lineNum = 1
-        for eachLine in all_lines:
-            all_files[file][lineNum] = eachLine
-            lineNum += 1
+    tokens = javalang.tokenizer.tokenize(code_contents)
+    #copy = list(tokens)
+    #print(copy)
+    parser = javalang.parser.Parser(tokens)
+    return parser.parse()
 
-    with open(file, 'r') as fd:
-        code_contents = fd.read()
-        tokens = javalang.tokenizer.tokenize(code_contents)
-        #copy = list(tokens)
-        #print(copy)
-        parser = javalang.parser.Parser(tokens)
-        return parser.parse()
-
-def print_ast(tree, file):
+def print_ast(tree):
     """
-    prints the ast with indentation to show children
+    tree: javaparser ast
+    side effects: prints the AST with indentation to show children
     """
     for path, node in tree:
         spacestr = ""
         for i in range(len(path)):
             spacestr+="    "
-        print("{}{}  {}".format(spacestr, node, node.position))
-        if type(node) == javalang.tree.ClassCreator:
-            print(node.constructor_type_arguments)
-            print(node.arguments)
-            for node in node.body:
-                print(node, node.position)
+        print("{}{} {}".format(spacestr, node, node.position))
+
+def print_2d_dict(d):
+    for k,v in d.items():
+        print(k[k.rfind('/'):])
+        for k2, v2 in v.items():
+            print("    {}: {}".format(k2,v2))
+        print("\n")
+
+
+def get_lifecycle_nodes(tree):
+    """
+    tree: node in javaparser AST
+    returns:
+        lifecycle_nodes: dict containing mapping from lifecycle method names to
+        the node in ths AST defining the method
+    """
+    lifecycle_nodes = {}
+    for path, node in tree.filter(javalang.tree.MethodDeclaration):
+        if(node.name in lifecycle):
+            #print(node.name)
+            lifecycle_nodes[node.name] = node
+    return lifecycle_nodes
+
+def find_leak_preconditions(tree, lifecycle_nodes, file):
+    """
+    tree: javalang CompilationUnit
+    lifecycle_nodes: map from lifecycle names to their AST nodes
+    file: the file containing CompilationUnit
+
+    So far will retrieve the static fields and threads started in
+    early lifecycle methods of the CompilationUnit (java activity class).
+    """
+    static_fields = find_static_fields_from_name(tree, file)
+    # updates which patterns to track
+    for n,t,i,l in static_fields:
+        leaks[file][n] = [t,i,l]
+    # analyze the first half of lifecycle
+    for method in allocation_cycles:
+        if method in lifecycle_nodes.keys():
+            node = lifecycle_nodes[method]
+            assigns = find_static_assignments(node, static_fields)
+            #print(assigns)
+            # update pattern state
+            for n,t,v,l in assigns:
+                leaks[file][n] = [t,i,l]
+            threads = find_thread_start(node, file)
+            for n,t,v,l in threads:
+                leaks[file][n] = [t,v,l]
+
+def find_fields(tree) :
+    """
+    tree: javaland AST
+    returns:
+        fields: list of fields belonging to classes in tree
+                (name, initializer value, linenumber in file)
+    """
+    fields = []
+    for path, node in tree.filter(javalang.tree.FieldDeclaration):
+        if(type(node.type) == javalang.tree.ReferenceType):
+            fields.append((node.declarators[0].name, node.declarators[0].initializer, node.position))
+            #print("Name={} dimensions={} initializer={} {} {}".format(node.declarators[0].name, \
+            #node.declarators[0].dimensions, node.declarators[0].initializer,\
+            #node.type, node.type.arguments))
+    return fields
+
+def find_thread_start(tree, file) :
+    """
+    tree: javalang AST node
+    returns: list of threads started in the node
+             (leak pattern name, type leaked, linenumber)
+    """
+    thread_pos = []
+    for path, node in tree.filter(javalang.tree.MethodInvocation):
+        if (node.member == 'start'):
+            line = all_files[file][node.position[0]]
+            pat_type = "THREAD"
+            start = node.position[1]-1
+            end = line.find('start')-1
+            if (javalang.tree.ClassCreator == type(path[-2])): # Parent is ClassCreator
+                #print("Thread is in abstract class. Likely leak at ", node.position[0])
+                pat_type = "ANON THREAD"
+                start = 0
+            leak_pattern_name = line[start:end]
+            thread_pos.append((leak_pattern_name, pat_type, "THREAD", node.position[0]))
+    return thread_pos
+
+def find_static_fields_from_name(tree, file):
+    """
+    tree: javalang AST node
+    file: filename containing the code for tree
+    returns: list of fields that are delared as static
+             (name, initializer, linnumber in file)
+    """
+    names = find_fields(tree)
+    static_fields = []
+    static_pat = re.compile('((\w*\s+)*)static ')
+    for name, init, pos in names:
+        linenum = pos[0]
+        x = all_files[file][linenum]
+        if(static_pat.match(x)):
+            static_fields.append((name, "STATIC FIELD", init, linenum))
+    return static_fields
+
+def find_static_assignments(tree, static_fields):
+    """
+    tree: javalang AST node
+    static_fields: list of static fields to track state for
+    returns:
+        assignments: list of assignments to those static fields
+    """
+    assignments = []
+    for path, node in tree.filter(javalang.tree.Assignment):
+        if(type(node.expressionl) == javalang.tree.MemberReference):
+            ref = node.expressionl
+            if ref.member in [f[0] for f in static_fields]:
+                assignments.append((ref.member, "STATIC FIELD", node.value, ref.position[0]))
+    return assignments
 
 def build_sym_table(tree) :
     """
@@ -132,10 +257,6 @@ def build_sym_table(tree) :
         spacestr = ""
         name = ""
         value = ""
-        for i in range(len(path)):
-            spacestr+="    "
-        if (type(node) == javalang.tree.CompilationUnit):
-            name = node.name
         if (type(node) == javalang.tree.MethodDeclaration):
             name = node.name
         if (type(node) == javalang.tree.Literal):
@@ -174,6 +295,9 @@ def fmt_ass(field):
     return "({}\s*=([^;]+);)".format(field)
 
 def findall_java_decls(files):
+    """
+    for checking work on static declaration pattern matching
+    """
     for file in files:
         find_java_decls(file)
 
