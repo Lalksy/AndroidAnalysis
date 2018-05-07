@@ -23,7 +23,7 @@ outerClasses = defaultdict(list)
 # stores the function call graph for each function of each class in each file
 # we only need a limited version of function call graphs so only calls to the class's own methods are tracked
 #
-# functionCallGraph[file][class][class method] = {}, where the dictionary stores all the class's own methods being called
+# functionCallGraph[file][class][class method] = set(), where the set stores all the class's own methods being called
 funcCallGraph = defaultdict(dict)
 
 # RE picks up static field declarations
