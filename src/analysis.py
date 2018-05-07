@@ -41,9 +41,9 @@ def main():
     #print("java class files of interest: \n {} \n".format(classes))
     #print("manifests: \n {} \n".format(analysisfiles['manifests']))
 
-    #for file in analysisfiles['classfiles']:
-    file = analysisfiles['classfiles'][7]
-    file_analysis(file)
+    for file in analysisfiles['classfiles']:
+    #file = analysisfiles['classfiles'][7]
+        file_analysis(file)
     flatten_leaks(leaks)
     report_leaks(leaks)
 
@@ -143,9 +143,15 @@ def flatten_leaks(d):
                     if(type(v2[1]) == javalang.tree.Literal):
                         v2[1] = None
                         continue
+                    known_reference = False
                     for path, node in v2[1].filter(javalang.tree.This):
                         warning = "Warning: static field {} likely leaks a reference (line {}) to enclosing activity class.".format(k2, v2[2])
                         v2[1] = warning
+                        known_reference = True
+                    if(not known_reference):
+                        warning = "Warning: use of static field {} (line {}) not advisable.".format(k2, v2[2])
+                        v2[1] = warning
+
             if v2[0] == 'THREAD':
                 if(v2[1]):
                     warning = "Warning: thread started (line {}) but not stopped. Thread resource possibly leaked.".format(v2[2])
@@ -163,7 +169,7 @@ def report_leaks(d):
         for k2, v2 in v.items():
             if(v2[1]):
                 print("    * "+v2[1])
-
+        print("\n")
 
 def get_lifecycle_nodes(tree):
     """
