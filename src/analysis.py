@@ -84,6 +84,7 @@ def extract_analysisfiles(walk):
     for file in app['classfiles']:
         with open(file, 'r') as fd:
             all_lines = fd.readlines()
+
             lineNum = 1
             for eachLine in all_lines:
                 all_files[file][lineNum] = eachLine
@@ -236,11 +237,12 @@ def get_listener_nodes(tree):
             start = node.member.find('set')+3
             end = node.member.find('Listener')
             handler_name = node.member[start:end]
-            handler_name = handler_name[0].lower()+handler_name[1:]
-            for p,n in node.filter(javalang.tree.MethodDeclaration):
-                if n.name == handler_name:
-                    #print("Found handler ", handler_name, n.position)
-                    listener_nodes.append(n)
+            if(handler_name):
+                handler_name = handler_name[0].lower()+handler_name[1:]
+                for p,n in node.filter(javalang.tree.MethodDeclaration):
+                    if n.name == handler_name:
+                        #print("Found handler ", handler_name, n.position)
+                        listener_nodes.append(n)
     return listener_nodes
 
 def find_leak_preconditions(tree, lifecycle_nodes, file):
@@ -369,9 +371,9 @@ def find_thread_stop(tree, file) :
              (leak pattern name, type leaked, linenumber)
     """
     thread_pos = []
-    stop_inovoc_pattern = re.compile('([\w\(\)\.]+)\.interrupt')
+    stop_inovoc_pattern = re.compile('([\w\(\)\.]+)\.(interrupt|stop)')
     for path, node in tree.filter(javalang.tree.MethodInvocation):
-        if (node.member == 'interrupt'):
+        if (node.member == 'interrupt') or (node.member == 'stop'):
             line = all_files[file][node.position[0]]
             pat_type = "THREAD"
             if (javalang.tree.ClassCreator == type(path[-2])): # Parent is ClassCreator
@@ -504,7 +506,7 @@ def process_anonymousclass(tree, file):
                 cur_line = all_files[file][startPos]
                 prev_line = all_files[file][startPos-1]
                 line = prev_line +  cur_line
-                if re.search(anonymous_class_rex, line) is not None:
+                if (re.search(anonymous_class_rex, line) is not None) and line.find('Listener') == -1 and line.find('Handler') == -1:
                     if parent_activity:
                         #print(file[file.rfind('/'):])
                         warning = "Warning: class "+parent_name+" (line "+str(parent_pos)+") has an anonymous inner "\

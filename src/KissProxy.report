@@ -1,0 +1,26 @@
+Class: /Channel.java: 
+    * Warning: use of static field HTTPS_PATTERN (line 20) not advisable.
+    * Warning: use of static field HTTP_PATTERN (line 21) not advisable.
+
+
+Class: /ChannelPair.java: 
+    * Warning: use of static field CONNECT_OK (line 22) not advisable.
+
+
+Class: /ProxyServer.java: 
+    * Warning: class ProxyServer (line 14) has an anonymous inner class (line 96), and there is a potential risk of memory leak because the anonymous inner class holds a reference to ProxyServer
+
+
+Class: /RequestLine.java: 
+
+
+Class: /ResponseLine.java: 
+
+
+Class: /ProxyService.java: 
+    * Warning: class ProxyService (line 9) has an anonymous inner class (line 14), and there is a potential risk of memory leak because the anonymous inner class holds a reference to ProxyService
+
+
+Class: /ProxySettings.java: 
+
+

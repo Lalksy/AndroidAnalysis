@@ -1,0 +1,24 @@
+Class: /CantStopTheRockActivity.java: 
+    * Warning: class CantStopTheRockActivity (line 26) has an anonymous inner class (line 127), and there is a high risk of memory leak because CantStopTheRockActivity is likely an activity class and the anonymous inner class holds a reference to it
+    * Warning: thread started (line 122) but not stopped. Thread resource possibly leaked.
+
+
+Class: /CantStopTheRockSelectSpeedActivity.java: 
+
+
+Class: /BaseStopTheRockPanel.java: 
+    * Warning: class BaseStopTheRockPanel (line 27) has an anonymous inner class (line 230), and there is a potential risk of memory leak because the anonymous inner class holds a reference to BaseStopTheRockPanel
+
+
+Class: /BossFightGamePanel.java: 
+    * Warning: class BossFightGamePanel (line 21) has an anonymous inner class (line 66), and there is a potential risk of memory leak because the anonymous inner class holds a reference to BossFightGamePanel
+
+
+Class: /FillMeUpRockPanel.java: 
+    * Warning: class FillMeUpRockPanel (line 14) has an anonymous inner class (line 31), and there is a potential risk of memory leak because the anonymous inner class holds a reference to FillMeUpRockPanel
+
+
+Class: /MusicalNotesRockPanel.java: 
+    * Warning: class MusicalNotesRockPanel (line 17) has an anonymous inner class (line 43), and there is a potential risk of memory leak because the anonymous inner class holds a reference to MusicalNotesRockPanel
+
+

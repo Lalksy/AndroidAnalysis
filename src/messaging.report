@@ -1,0 +1,337 @@
+Class: /App.java: 
+    * Warning: use of static field TAG (line 40) not advisable.
+
+
+Class: /BaseActivity.java: 
+    * Warning: use of static field TAG (line 52) not advisable.
+    * Warning: thread started (line 736) but not stopped. Thread resource possibly leaked.
+
+
+Class: /BaseSettings.java: 
+
+
+Class: /MainActivity.java: 
+    * Warning: class MainActivity (line 65) has a non-static inner class BackgroundTask (line 610), and there is a high risk of memory leak because MainActivity is likely an activity class and BackgroundTask holds a reference to it
+
+
+Class: /SettingActivity.java: 
+
+
+Class: /ComposeMail.java: 
+    * Warning: use of static field TAG (line 45) not advisable.
+
+
+Class: /Groups.java: 
+    * Warning: use of static field TAG (line 43) not advisable.
+
+
+Class: /Mail.java: 
+    * Warning: use of static field TAG (line 67) not advisable.
+    * Warning: class Mail (line 61) has an anonymous inner class (line 485), and there is a potential risk of memory leak because the anonymous inner class holds a reference to Mail
+
+
+Class: /MailDetail.java: 
+
+
+Class: /MailGroupProvider.java: 
+    * Warning: use of static field CONTENT_URI (line 14) not advisable.
+
+
+Class: /MailProvider.java: 
+    * Warning: use of static field CONTENT_URI (line 22) not advisable.
+
+
+Class: /MailNotificationProvider.java: 
+    * Warning: use of static field CONTENT_URI (line 14) not advisable.
+
+
+Class: /MailGroupSyncService.java: 
+    * Warning: use of static field TAG (line 12) not advisable.
+
+
+Class: /MailSyncService.java: 
+    * Warning: use of static field TAG (line 41) not advisable.
+
+
+Class: /MailRemoteViewFactory.java: 
+
+
+Class: /MailRemoteViewService.java: 
+
+
+Class: /MailWidget.java: 
+
+
+Class: /MailWidgetConfigure.java: 
+
+
+Class: /OdooAccountManager.java: 
+
+
+Class: /OdooAuthenticateService.java: 
+
+
+Class: /AttachmentDepricated.java: 
+    * Warning: use of static field TAG (line 62) not advisable.
+    * Warning: class AttachmentDepricated (line 61) has a non-static inner class RemoveAttachment (line 248), and there is a potential risk of memory leak because RemoveAttachment holds a reference to AttachmentDepricated
+    * Warning: class AttachmentDepricated (line 61) has a non-static inner class CreateAttachment (line 316), and there is a potential risk of memory leak because CreateAttachment holds a reference to AttachmentDepricated
+    * Warning: class AttachmentDepricated (line 61) has a non-static inner class AttachmentDownloader (line 404), and there is a potential risk of memory leak because AttachmentDownloader holds a reference to AttachmentDepricated
+
+
+Class: /Attachments.java: 
+    * Warning: use of static field TAG (line 52) not advisable.
+    * Warning: class Attachments (line 51) has a non-static inner class DownloadManager (line 138), and there is a potential risk of memory leak because DownloadManager holds a reference to Attachments
+
+
+Class: /AttachmentProvider.java: 
+    * Warning: use of static field CONTENT_URI (line 13) not advisable.
+
+
+Class: /ModelProvider.java: 
+    * Warning: use of static field CONTENT_URI (line 13) not advisable.
+
+
+Class: /AccountCreate.java: 
+    * Warning: class DatabaseCreate (line 283) has an anonymous inner class (line 300), and there is a potential risk of memory leak because the anonymous inner class holds a reference to DatabaseCreate
+    * Warning: class AccountCreate (line 39) has a non-static inner class GetInstances (line 109), and there is a potential risk of memory leak because GetInstances holds a reference to AccountCreate
+    * Warning: class AccountCreate (line 39) has a non-static inner class LoadInstances (line 156), and there is a potential risk of memory leak because LoadInstances holds a reference to AccountCreate
+    * Warning: class AccountCreate (line 39) has a non-static inner class ImageLoader (line 190), and there is a potential risk of memory leak because ImageLoader holds a reference to AccountCreate
+    * Warning: class AccountCreate (line 39) has a non-static inner class CreateAccount (line 225), and there is a potential risk of memory leak because CreateAccount holds a reference to AccountCreate
+    * Warning: class AccountCreate (line 39) has a non-static inner class DatabaseCreate (line 283), and there is a potential risk of memory leak because DatabaseCreate holds a reference to AccountCreate
+
+
+Class: /LoginSignup.java: 
+    * Warning: class LoginSignup (line 42) has a non-static inner class LoginProcess (line 217), and there is a potential risk of memory leak because LoginProcess holds a reference to LoginSignup
+    * Warning: class LoginSignup (line 42) has a non-static inner class OdooURLTest (line 317), and there is a potential risk of memory leak because OdooURLTest holds a reference to LoginSignup
+
+
+Class: /MailFollowerProvider.java: 
+    * Warning: use of static field CONTENT_URI (line 14) not advisable.
+
+
+Class: /CompanyProvider.java: 
+    * Warning: use of static field CONTENT_URI (line 13) not advisable.
+
+
+Class: /CountryProvider.java: 
+    * Warning: use of static field CONTENT_URI (line 14) not advisable.
+
+
+Class: /PartnersProvider.java: 
+    * Warning: use of static field CONTENT_URI (line 14) not advisable.
+
+
+Class: /UsersProvider.java: 
+    * Warning: use of static field CONTENT_URI (line 13) not advisable.
+
+
+Class: /ContactSyncService.java: 
+
+
+Class: /OColumn.java: 
+    * Warning: class OColumn (line 30) has a non-static inner class ColumnDomain (line 640), and there is a potential risk of memory leak because ColumnDomain holds a reference to OColumn
+
+
+Class: /ODataRow.java: 
+    * Warning: class ODataRow (line 29) has a non-static inner class IdName (line 110), and there is a potential risk of memory leak because IdName holds a reference to ODataRow
+
+
+Class: /OdooHelper.java: 
+    * Warning: use of static field TAG (line 24) not advisable.
+
+
+Class: /OFieldsHelper.java: 
+
+
+Class: /OModel.java: 
+    * Warning: use of static field TAG (line 71) not advisable.
+    * Warning: class OModel (line 68) has a non-static inner class AutoUpdateOnServer (line 1921), and there is a potential risk of memory leak because AutoUpdateOnServer holds a reference to OModel
+
+
+Class: /ORelationRecordList.java: 
+    * Warning: class ORelationRecordList (line 11) has a non-static inner class ORelationRecords (line 30), and there is a potential risk of memory leak because ORelationRecords holds a reference to ORelationRecordList
+
+
+Class: /ORelIds.java: 
+    * Warning: class ORelIds (line 9) has a non-static inner class RelData (line 44), and there is a potential risk of memory leak because RelData holds a reference to ORelIds
+
+
+Class: /OSQLHelper.java: 
+    * Warning: use of static field TAG (line 23) not advisable.
+
+
+Class: /OSQLiteHelper.java: 
+    * Warning: use of static field TAG (line 23) not advisable.
+
+
+Class: /OSyncHelper.java: 
+    * Warning: use of static field TAG (line 53) not advisable.
+    * Warning: class OSyncHelper (line 50) has an anonymous inner class (line 450), and there is a potential risk of memory leak because the anonymous inner class holds a reference to OSyncHelper
+    * Warning: class OSyncHelper (line 50) has an anonymous inner class (line 449), and there is a potential risk of memory leak because the anonymous inner class holds a reference to OSyncHelper
+
+
+Class: /SelectionBuilder.java: 
+
+
+Class: /OQuery.java: 
+    * Warning: use of static field TAG (line 20) not advisable.
+
+
+Class: /OBlob.java: 
+
+
+Class: /OBoolean.java: 
+
+
+Class: /ODateTime.java: 
+
+
+Class: /OHtml.java: 
+
+
+Class: /OInteger.java: 
+
+
+Class: /OReal.java: 
+
+
+Class: /OText.java: 
+
+
+Class: /OTimestamp.java: 
+
+
+Class: /OVarchar.java: 
+
+
+Class: /DataSetChangeReceiver.java: 
+
+
+Class: /SyncFinishReceiver.java: 
+
+
+Class: /OdooServerConnection.java: 
+
+
+Class: /OContact.java: 
+
+
+Class: /BaseFragment.java: 
+    * Warning: class BaseFragment (line 48) has an anonymous inner class (line 255), and there is a potential risk of memory leak because the anonymous inner class holds a reference to BaseFragment
+    * Warning: class BaseFragment (line 48) has an anonymous inner class (line 259), and there is a potential risk of memory leak because the anonymous inner class holds a reference to BaseFragment
+
+
+Class: /OListAdapter.java: 
+    * Warning: class OListAdapter (line 33) has a non-static inner class RowFilter (line 133), and there is a potential risk of memory leak because RowFilter holds a reference to OListAdapter
+
+
+Class: /OService.java: 
+    * Warning: class OService (line 34) has a non-static inner class SyncAdapterImpl (line 51), and there is a potential risk of memory leak because SyncAdapterImpl holds a reference to OService
+
+
+Class: /OSyncAdapter.java: 
+    * Warning: use of static field TAG (line 43) not advisable.
+
+
+Class: /OSyncService.java: 
+    * Warning: use of static field sSyncAdapterLock (line 32) not advisable.
+
+
+Class: /OAppRater.java: 
+
+
+Class: /ODate.java: 
+    * Warning: use of static field TAG (line 37) not advisable.
+
+
+Class: /OEViewHandler.java: 
+    * Warning: class OEViewHandler (line 26) has an anonymous inner class (line 59), and there is a potential risk of memory leak because the anonymous inner class holds a reference to OEViewHandler
+
+
+Class: /Validator.java: 
+    * Warning: use of static field EMAIL_PATTERN (line 10) not advisable.
+
+
+Class: /OContactView.java: 
+
+
+Class: /DrawerHelper.java: 
+    * Warning: class DrawerHelper (line 33) has an anonymous inner class (line 44), and there is a potential risk of memory leak because the anonymous inner class holds a reference to DrawerHelper
+    * Warning: class DrawerHelper (line 33) has an anonymous inner class (line 43), and there is a potential risk of memory leak because the anonymous inner class holds a reference to DrawerHelper
+
+
+Class: /NotificationBuilder.java: 
+    * Warning: class NotificationBuilder (line 19) has a non-static inner class NotificationAction (line 125), and there is a potential risk of memory leak because NotificationAction holds a reference to NotificationBuilder
+
+
+Class: /WidgetHelper.java: 
+
+
+Class: /MultiTagsTextView.java: 
+    * Warning: use of static field CREATOR (line 1264) not advisable.
+    * Warning: class SavedState (line 1224) has an anonymous inner class (line 1264), and there is a potential risk of memory leak because the anonymous inner class holds a reference to SavedState
+    * Warning: class MultiTagsTextView (line 61) has an anonymous inner class (line 133), and there is a potential risk of memory leak because the anonymous inner class holds a reference to MultiTagsTextView
+    * Warning: class TokenTextWatcherAPI8 (line 1044) has an anonymous inner class (line 707), and there is a potential risk of memory leak because the anonymous inner class holds a reference to TokenTextWatcherAPI8
+    * Warning: class MultiTagsTextView (line 61) has an anonymous inner class (line 1210), and there is a potential risk of memory leak because the anonymous inner class holds a reference to MultiTagsTextView
+    * Warning: class MultiTagsTextView (line 61) has a non-static inner class ViewSpan (line 827), and there is a potential risk of memory leak because ViewSpan holds a reference to MultiTagsTextView
+    * Warning: class MultiTagsTextView (line 61) has a non-static inner class CountSpan (line 881), and there is a potential risk of memory leak because CountSpan holds a reference to MultiTagsTextView
+    * Warning: class MultiTagsTextView (line 61) has a non-static inner class TokenImageSpan (line 903), and there is a potential risk of memory leak because TokenImageSpan holds a reference to MultiTagsTextView
+    * Warning: class MultiTagsTextView (line 61) has a non-static inner class TokenSpanWatcher (line 952), and there is a potential risk of memory leak because TokenSpanWatcher holds a reference to MultiTagsTextView
+    * Warning: class MultiTagsTextView (line 61) has a non-static inner class TokenTextWatcher (line 984), and there is a potential risk of memory leak because TokenTextWatcher holds a reference to MultiTagsTextView
+    * Warning: class MultiTagsTextView (line 61) has a non-static inner class TokenTextWatcherAPI8 (line 1044), and there is a potential risk of memory leak because TokenTextWatcherAPI8 holds a reference to MultiTagsTextView
+
+
+Class: /OField.java: 
+    * Warning: use of static field TAG (line 81) not advisable.
+    * Warning: class OField (line 78) has an anonymous inner class (line 758), and there is a potential risk of memory leak because the anonymous inner class holds a reference to OField
+    * Warning: class OField (line 78) has an anonymous inner class (line 406), and there is a potential risk of memory leak because the anonymous inner class holds a reference to OField
+    * Warning: class OField (line 78) has an anonymous inner class (line 622), and there is a potential risk of memory leak because the anonymous inner class holds a reference to OField
+    * Warning: class OField (line 78) has an anonymous inner class (line 623), and there is a potential risk of memory leak because the anonymous inner class holds a reference to OField
+
+
+Class: /OForm.java: 
+    * Warning: class OnChangeBackgroundProcess (line 365) has an anonymous inner class (line 336), and there is a potential risk of memory leak because the anonymous inner class holds a reference to OnChangeBackgroundProcess
+    * Warning: class OForm (line 51) has an anonymous inner class (line 314), and there is a potential risk of memory leak because the anonymous inner class holds a reference to OForm
+    * Warning: class OForm (line 51) has a non-static inner class OnChangeBackgroundProcess (line 365), and there is a potential risk of memory leak because OnChangeBackgroundProcess holds a reference to OForm
+
+
+Class: /OList.java: 
+    * Warning: class OList (line 58) has an anonymous inner class (line 962), and there is a potential risk of memory leak because the anonymous inner class holds a reference to OList
+    * Warning: class OList (line 58) has an anonymous inner class (line 334), and there is a potential risk of memory leak because the anonymous inner class holds a reference to OList
+    * Warning: class ViewClickListeners (line 1067) has an anonymous inner class (line 335), and there is a potential risk of memory leak because the anonymous inner class holds a reference to ViewClickListeners
+    * Warning: class OList (line 58) has an anonymous inner class (line 768), and there is a potential risk of memory leak because the anonymous inner class holds a reference to OList
+    * Warning: class OList (line 58) has a non-static inner class ViewClickListeners (line 1067), and there is a potential risk of memory leak because ViewClickListeners holds a reference to OList
+
+
+Class: /OManyToOneWidget.java: 
+    * Warning: class OManyToOneWidget (line 49) has an anonymous inner class (line 232), and there is a potential risk of memory leak because the anonymous inner class holds a reference to OManyToOneWidget
+    * Warning: class OManyToOneWidget (line 49) has an anonymous inner class (line 231), and there is a potential risk of memory leak because the anonymous inner class holds a reference to OManyToOneWidget
+
+
+Class: /OSearchableMany2One.java: 
+    * Warning: use of static field TAG (line 49) not advisable.
+    * Warning: class OSearchableMany2One (line 46) has a non-static inner class RecordsLoader (line 401), and there is a potential risk of memory leak because RecordsLoader holds a reference to OSearchableMany2One
+    * Warning: class OSearchableMany2One (line 46) has a non-static inner class CreatingRecord (line 541), and there is a potential risk of memory leak because CreatingRecord holds a reference to OSearchableMany2One
+
+
+Class: /OViewPager.java: 
+    * Warning: use of static field TAG (line 51) not advisable.
+    * Warning: class OViewPager (line 48) has a non-static inner class PaggerAdapter (line 179), and there is a potential risk of memory leak because PaggerAdapter holds a reference to OViewPager
+    * Warning: class OViewPager (line 48) has a non-static inner class ZoomOutPageTransformer (line 350), and there is a potential risk of memory leak because ZoomOutPageTransformer holds a reference to OViewPager
+
+
+Class: /OWebTextView.java: 
+    * Warning: class OWebTextView (line 30) has a non-static inner class URLDrawable (line 127), and there is a potential risk of memory leak because URLDrawable holds a reference to OWebTextView
+    * Warning: class OWebTextView (line 30) has a non-static inner class URLImageParser (line 138), and there is a potential risk of memory leak because URLImageParser holds a reference to OWebTextView
+    * Warning: class URLImageParser (line 138) has a non-static inner class ImageGetterAsyncTask (line 159), and there is a potential risk of memory leak because ImageGetterAsyncTask holds a reference to URLImageParser
+
+
+Class: /UndoBar.java: 
+    * Warning: class Builder (line 251) has an anonymous inner class (line 49), and there is a potential risk of memory leak because the anonymous inner class holds a reference to Builder
+
+
+Class: /UndoBarView.java: 
+    * Warning: use of static field CREATOR (line 88) not advisable.
+    * Warning: class SavedState (line 68) has an anonymous inner class (line 88), and there is a potential risk of memory leak because the anonymous inner class holds a reference to SavedState
+
+

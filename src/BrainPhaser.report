@@ -1,0 +1,140 @@
+Class: /BrainPhaserApplication.java: 
+    * Warning: use of static field PACKAGE_NAME (line 50) not advisable.
+    * Warning: use of static field component (line 49) not advisable.
+
+
+Class: /Avatars.java: 
+    * Warning: use of static field AVATARS (line 15) not advisable.
+
+
+Class: /CreateUserActivity.java: 
+
+
+Class: /MainActivity.java: 
+    * Warning: class MainActivity (line 32) has an anonymous inner class (line 159), and there is a high risk of memory leak because MainActivity is likely an activity class and the anonymous inner class holds a reference to it
+
+
+Class: /AnswerAdapter.java: 
+    * Warning: class AnswerAdapter (line 21) has a non-static inner class AnswerViewHolder (line 79), and there is a potential risk of memory leak because AnswerViewHolder holds a reference to AnswerAdapter
+
+
+Class: /AnswerFragmentFactory.java: 
+    * Warning: class AnswerFragmentFactory (line 16) has an anonymous inner class (line 33), and there is a potential risk of memory leak because the anonymous inner class holds a reference to AnswerFragmentFactory
+    * Warning: class AnswerFragmentFactory (line 16) has an anonymous inner class (line 21), and there is a potential risk of memory leak because the anonymous inner class holds a reference to AnswerFragmentFactory
+    * Warning: class AnswerFragmentFactory (line 16) has an anonymous inner class (line 27), and there is a potential risk of memory leak because the anonymous inner class holds a reference to AnswerFragmentFactory
+
+
+Class: /ChallengeActivity.java: 
+
+
+Class: /ButtonsAdapter.java: 
+    * Warning: class ButtonsAdapter (line 26) has a non-static inner class ButtonViewHolder (line 106), and there is a potential risk of memory leak because ButtonViewHolder holds a reference to ButtonsAdapter
+
+
+Class: /ButtonViewState.java: 
+    * Warning: use of static field CREATOR (line 19) not advisable.
+    * Warning: class ButtonViewState (line 18) has an anonymous inner class (line 20), and there is a potential risk of memory leak because the anonymous inner class holds a reference to ButtonViewState
+
+
+Class: /MultipleChoiceFragment.java: 
+    * Warning: class MultipleChoiceFragment (line 25) has an anonymous inner class (line 91), and there is a potential risk of memory leak because the anonymous inner class holds a reference to MultipleChoiceFragment
+    * Warning: class MultipleChoiceFragment (line 25) has an anonymous inner class (line 103), and there is a potential risk of memory leak because the anonymous inner class holds a reference to MultipleChoiceFragment
+
+
+Class: /SelfTestFragment.java: 
+
+
+Class: /TextFragment.java: 
+    * Warning: class TextFragment (line 24) has an anonymous inner class (line 143), and there is a potential risk of memory leak because the anonymous inner class holds a reference to TextFragment
+
+
+Class: /SelectCategoryPage.java: 
+    * Warning: class SelectCategoryPage (line 35) has an anonymous inner class (line 110), and there is a potential risk of memory leak because the anonymous inner class holds a reference to SelectCategoryPage
+
+
+Class: /UserAdapter.java: 
+    * Warning: class UserAdapter (line 30) has a non-static inner class UserViewHolder (line 134), and there is a potential risk of memory leak because UserViewHolder holds a reference to UserAdapter
+
+
+Class: /StatisticsActivity.java: 
+    * Warning: use of static field TYPES_LANDSCAPE (line 37) not advisable.
+    * Warning: use of static field TYPES_PORTRAIT (line 44) not advisable.
+    * Warning: class StatisticsActivity (line 35) has an anonymous inner class (line 154), and there is a high risk of memory leak because StatisticsActivity is likely an activity class and the anonymous inner class holds a reference to it
+
+
+Class: /StatisticsAdapter.java: 
+    * Warning: use of static field VIEW_TYPE_MAP (line 27) not advisable.
+
+
+Class: /DateComponent.java: 
+    * Warning: use of static field info (line 16) not advisable.
+
+
+Class: /UserManager.java: 
+
+
+Class: /CustomizedFormatter.java: 
+
+
+Class: /AnswerDao.java: 
+    * Warning: use of static field Id (line 29) not advisable.
+    * Warning: use of static field Text (line 30) not advisable.
+    * Warning: use of static field AnswerCorrect (line 31) not advisable.
+    * Warning: use of static field ChallengeId (line 32) not advisable.
+
+
+Class: /CategoryDao.java: 
+    * Warning: use of static field Id (line 26) not advisable.
+    * Warning: use of static field Title (line 27) not advisable.
+    * Warning: use of static field Description (line 28) not advisable.
+    * Warning: use of static field Image (line 29) not advisable.
+
+
+Class: /ChallengeDao.java: 
+    * Warning: use of static field Id (line 29) not advisable.
+    * Warning: use of static field ChallengeType (line 30) not advisable.
+    * Warning: use of static field Question (line 31) not advisable.
+    * Warning: use of static field CategoryId (line 32) not advisable.
+
+
+Class: /CompletionDao.java: 
+    * Warning: use of static field Id (line 31) not advisable.
+    * Warning: use of static field Stage (line 32) not advisable.
+    * Warning: use of static field LastCompleted (line 33) not advisable.
+    * Warning: use of static field UserId (line 34) not advisable.
+    * Warning: use of static field ChallengeId (line 35) not advisable.
+
+
+Class: /DaoMaster.java: 
+    * Warning: class DaoMaster (line 23) has a non-static inner class OpenHelper (line 48), and there is a potential risk of memory leak because OpenHelper holds a reference to DaoMaster
+
+
+Class: /SettingsDao.java: 
+    * Warning: use of static field Id (line 26) not advisable.
+    * Warning: use of static field TimeBoxStage1 (line 27) not advisable.
+    * Warning: use of static field TimeBoxStage2 (line 28) not advisable.
+    * Warning: use of static field TimeBoxStage3 (line 29) not advisable.
+    * Warning: use of static field TimeBoxStage4 (line 30) not advisable.
+    * Warning: use of static field TimeBoxStage5 (line 31) not advisable.
+    * Warning: use of static field TimeBoxStage6 (line 32) not advisable.
+
+
+Class: /StatisticsDao.java: 
+    * Warning: use of static field Id (line 31) not advisable.
+    * Warning: use of static field Succeeded (line 32) not advisable.
+    * Warning: use of static field Time (line 33) not advisable.
+    * Warning: use of static field UserId (line 34) not advisable.
+    * Warning: use of static field ChallengeId (line 35) not advisable.
+
+
+Class: /UserDao.java: 
+    * Warning: use of static field Id (line 29) not advisable.
+    * Warning: use of static field Name (line 30) not advisable.
+    * Warning: use of static field Avatar (line 31) not advisable.
+    * Warning: use of static field SettingsId (line 32) not advisable.
+
+
+Class: /ImageProxy.java: 
+    * Warning: use of static field requestCache (line 20) not advisable.
+
+

@@ -1,0 +1,19 @@
+Class: /MainActivity.java: 
+    * Warning: class MainActivity (line 49) has an anonymous inner class (line 328), and there is a high risk of memory leak because MainActivity is likely an activity class and the anonymous inner class holds a reference to it
+    * Warning: thread started (line 445) but not stopped. Thread resource possibly leaked.
+
+
+Class: /SplashActivity.java: 
+    * Warning: class SplashActivity (line 34) has an anonymous inner class (line 69), and there is a high risk of memory leak because SplashActivity is likely an activity class and the anonymous inner class holds a reference to it
+
+
+Class: /BossPlane.java: 
+    * Warning: class BossPlane (line 21) has an anonymous inner class (line 125), and there is a potential risk of memory leak because the anonymous inner class holds a reference to BossPlane
+    * Warning: class BossPlane (line 21) has an anonymous inner class (line 126), and there is a potential risk of memory leak because the anonymous inner class holds a reference to BossPlane
+
+
+Class: /Plane.java: 
+    * Warning: class Plane (line 20) has an anonymous inner class (line 109), and there is a potential risk of memory leak because the anonymous inner class holds a reference to Plane
+    * Warning: class Plane (line 20) has an anonymous inner class (line 110), and there is a potential risk of memory leak because the anonymous inner class holds a reference to Plane
+
+
