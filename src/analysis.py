@@ -41,16 +41,11 @@ def main():
     #print("java class files of interest: \n {} \n".format(classes))
     #print("manifests: \n {} \n".format(analysisfiles['manifests']))
 
-    # findall_java_decls(analysisfiles['classfiles'])
-
     for file in analysisfiles['classfiles']:
-    #file = analysisfiles['classfiles'][6]
-        #print("---AST {}".format(file[file.rfind('/'):]))
+    #file = analysisfiles['classfiles'][7]
         file_analysis(file)
-        #print("---regexp")
-        #find_java_decls(file)
-        #print("\n")
-    print_2d_dict(leaks)
+    flatten_leaks(leaks)
+    report_leaks(leaks)
 
 def extract_analysisfiles(walk):
     """
@@ -108,7 +103,8 @@ def file_analysis(file):
         tree = gen_java_ast(code_contents)
         #print_ast(tree)
         lifecycle_nodes = get_lifecycle_nodes(tree)
-        find_leak_preconditions(tree, lifecycle_nodes, file)
+        static_fields = find_leak_preconditions(tree, lifecycle_nodes, file)
+        find_leak_fixes(tree, lifecycle_nodes, static_fields, file)
 
 def gen_java_ast(code_contents):
     """
@@ -139,6 +135,41 @@ def print_2d_dict(d):
             print("    {}: {}".format(k2,v2))
         print("\n")
 
+def flatten_leaks(d):
+    for k,v in d.items():
+        for k2, v2 in v.items():
+            if v2[0] == 'STATIC FIELD':
+                if(v2[1]):
+                    if(type(v2[1]) == javalang.tree.Literal):
+                        v2[1] = None
+                        continue
+                    known_reference = False
+                    for path, node in v2[1].filter(javalang.tree.This):
+                        warning = "Warning: static field {} likely leaks a reference (line {}) to enclosing activity class.".format(k2, v2[2])
+                        v2[1] = warning
+                        known_reference = True
+                    if(not known_reference):
+                        warning = "Warning: use of static field {} (line {}) not advisable.".format(k2, v2[2])
+                        v2[1] = warning
+
+            if v2[0] == 'THREAD':
+                if(v2[1]):
+                    warning = "Warning: thread started (line {}) but not stopped. Thread resource possibly leaked.".format(v2[2])
+                    v2[1] = warning
+            if v2[0] == 'ANON THREAD':
+                if(v2[1]):
+                    warning = "Warning: anonymous thread started (line {}) but not stopped. Thread resource possibly leaked.".format(v2[2])
+                    v2[1] = warning
+
+
+def report_leaks(d):
+    for k,v in d.items():
+        filename = k[k.rfind('/'):]
+        print("Class: {}: ".format(filename))
+        for k2, v2 in v.items():
+            if(v2[1]):
+                print("    * "+v2[1])
+        print("\n")
 
 def get_lifecycle_nodes(tree):
     """
@@ -160,13 +191,17 @@ def find_leak_preconditions(tree, lifecycle_nodes, file):
     lifecycle_nodes: map from lifecycle names to their AST nodes
     file: the file containing CompilationUnit
 
-    So far will retrieve the static fields and threads started in
-    early lifecycle methods of the CompilationUnit (java activity class).
+    So far will retrieve the static fields declarations and track them
+    in leaks dict.
     """
     static_fields = find_static_fields_from_name(tree, file)
     # updates which patterns to track
     for n,t,i,l in static_fields:
         leaks[file][n] = [t,i,l]
+
+    process_anonymousclass(tree, file)
+    process_innerclass(tree,file)
+
     # analyze the first half of lifecycle
     for method in allocation_cycles:
         if method in lifecycle_nodes.keys():
@@ -175,8 +210,22 @@ def find_leak_preconditions(tree, lifecycle_nodes, file):
             #print(assigns)
             # update pattern state
             for n,t,v,l in assigns:
-                leaks[file][n] = [t,i,l]
+                leaks[file][n] = [t,v,l]
             threads = find_thread_start(node, file)
+            for n,t,v,l in threads:
+                leaks[file][n] = [t,v,l]
+    return static_fields
+
+def find_leak_fixes(tree, lifecycle_nodes, static_fields, file):
+    for method in deallocation_cycles:
+        if method in lifecycle_nodes.keys():
+            node = lifecycle_nodes[method]
+            assigns = find_static_assignments(node, static_fields)
+            #print(assigns)
+            # update pattern state
+            for n,t,v,l in assigns:
+                leaks[file][n] = [t,i,l]
+            threads = find_thread_stop(node, file)
             for n,t,v,l in threads:
                 leaks[file][n] = [t,v,l]
 
@@ -203,18 +252,36 @@ def find_thread_start(tree, file) :
              (leak pattern name, type leaked, linenumber)
     """
     thread_pos = []
+    start_inovoc_pattern = re.compile('([\w\(\)]+)\.start')
     for path, node in tree.filter(javalang.tree.MethodInvocation):
         if (node.member == 'start'):
             line = all_files[file][node.position[0]]
             pat_type = "THREAD"
-            start = node.position[1]-1
-            end = line.find('start')-1
+            if (javalang.tree.ClassCreator == type(path[-2])): # Parent is ClassCreator
+                #print("Thread is in abstract class. Likely leak at ", node.position[0])
+                pat_type = "ANON THREAD"
+            leak_pattern_name = start_inovoc_pattern.findall(line)[0]
+            thread_pos.append((leak_pattern_name, pat_type, "THREAD", node.position[0]))
+    return thread_pos
+
+def find_thread_stop(tree, file) :
+    """
+    tree: javalang AST node
+    returns: list of threads stopped in the node
+             (leak pattern name, type leaked, linenumber)
+    """
+    thread_pos = []
+    stop_inovoc_pattern = re.compile('([\w\(\)]+)\.interrupt')
+    for path, node in tree.filter(javalang.tree.MethodInvocation):
+        if (node.member == 'interrupt'):
+            line = all_files[file][node.position[0]]
+            pat_type = "THREAD"
             if (javalang.tree.ClassCreator == type(path[-2])): # Parent is ClassCreator
                 #print("Thread is in abstract class. Likely leak at ", node.position[0])
                 pat_type = "ANON THREAD"
                 start = 0
-            leak_pattern_name = line[start:end]
-            thread_pos.append((leak_pattern_name, pat_type, "THREAD", node.position[0]))
+            leak_pattern_name = stop_inovoc_pattern.findall(line)[0]
+            thread_pos.append((leak_pattern_name, pat_type, None, node.position[0]))
     return thread_pos
 
 def find_static_fields_from_name(tree, file):
@@ -248,6 +315,93 @@ def find_static_assignments(tree, static_fields):
             if ref.member in [f[0] for f in static_fields]:
                 assignments.append((ref.member, "STATIC FIELD", node.value, ref.position[0]))
     return assignments
+
+def process_innerclass(tree, file):
+    """
+    check if there is any non-static inner class which is potentially a source
+    of memory leak
+    """
+
+    for path, node in tree.filter(javalang.tree.ClassDeclaration):
+        parent_pos = node.position[0]
+        parent_name = node.name
+        parent_line = all_files[file][parent_pos]
+        parent_activity = False
+
+        if 'activity' in parent_line.lower():
+            parent_activity = True
+
+        for path, child in node.filter(javalang.tree.ClassDeclaration):
+            if child is not node:
+                child_pos = child.position[0]
+                child_name = child.name
+                child_line = all_files[file][child_pos]
+                child_static = True
+                if re.search("\s+static\s+class", child_line) is None:
+                    child_static = False
+
+                if parent_activity and not child_static:
+                    leaks[file][child_name] = ["INNER CLASS", "parent", child_line]
+                    #print(file[file.rfind('/'):])
+                    warning = "Warning: class "+parent_name+" (line "+str(parent_pos)+") has a non-static inner "\
+                          +"class "+child_name+" (line "+str(child_pos)+"), and there is a high risk of memory leak "\
+                          +"because "+parent_name+" is likely an activity class and "+child_name+" holds a "\
+                          +"reference to it" #% (parent_name, parent_pos, child_name, child_pos, parent_name, child_name)
+                    #print(warning)
+                    leaks[file][child_name] = ["INNER CLASS", warning, child_line]
+                elif not parent_activity and not child_static:
+                    #print(file[file.rfind('/'):])
+                    warning = "Warning: class "+parent_name+" (line "+str(parent_pos)+") has a non-static inner "\
+                          +"class "+child_name+" (line "+str(child_pos)+"), and there is a potential risk of memory leak "\
+                          +"because "+child_name+" holds a "\
+                          +"reference to "+parent_name # % (parent_name, parent_pos, child_name, child_pos, child_name, parent_name))
+                    #print(warning)
+                    leaks[file][child_name] = ["INNER CLASS", warning, child_line]
+
+def process_anonymousclass(tree, file):
+    anonymous_class_rex = "new\s+.*\(.*\)\s*{"
+    with open(file, 'r') as fd:
+        all_lines = fd.readlines()
+    startPos = len(all_lines)
+
+    for path, node in tree.filter(javalang.tree.ClassDeclaration):
+        parent_pos = node.position[0]
+        parent_name = node.name
+        parent_line = all_files[file][parent_pos]
+        parent_activity = False
+
+        if 'activity' in parent_line.lower():
+            parent_activity = True
+
+        for path, child in node.filter(javalang.tree.ClassCreator):
+            for path, nextNode in child:
+                if nextNode.position is not None:
+                    startPos = nextNode.position[0]
+                    break
+            while startPos >= 2:
+                cur_line = all_files[file][startPos]
+                prev_line = all_files[file][startPos-1]
+                line = prev_line +  cur_line
+                if re.search(anonymous_class_rex, line) is not None:
+                    if parent_activity:
+                        #print(file[file.rfind('/'):])
+                        warning = "Warning: class "+parent_name+" (line "+str(parent_pos)+") has an anonymous inner "\
+                              +"class (line "+str(startPos-1)+"), and there is a high risk of memory leak "\
+                              +"because "+parent_name+" is likely an activity class and the anonymous inner class holds a "\
+                              +"reference to it" #% (parent_name, parent_pos,startPos-1, parent_name))
+                        #print(warning)
+                        leaks[file][line] = ["ANON CLASS", warning, startPos-1]
+                    else:
+                        #print(file[file.rfind('/'):])
+                        warning = "Warning: class "+parent_name+" (line "+str(parent_pos)+") has an anonymous inner "\
+                                +"class (line "+str(startPos-1)+"), and there is a potential risk of memory leak "\
+                                +"because the anonymous inner class holds a "\
+                                +"reference to "+parent_name #% (parent_name, parent_pos,startPos-1, parent_name))
+                        #print(warning)
+                        leaks[file][line] = ["ANON CLASS", warning, startPos-1]
+                    break
+
+                startPos -= 1
 
 def build_sym_table(tree) :
     """
