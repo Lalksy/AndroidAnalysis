@@ -20,6 +20,12 @@ leaks = defaultdict(dict)
 # value: a list holding outer classes info [class name, class line number, file of this class]
 outerClasses = defaultdict(list)
 
+# stores the function call graph for each function of each class in each file
+# we only need a limited version of function call graphs so only calls to the class's own methods are tracked
+#
+# functionCallGraph[file][class][class method] = {}, where the dictionary stores all the class's own methods being called
+funcCallGraph = defaultdict(dict)
+
 # RE picks up static field declarations
 staticfielddecl = '(static\s+(\w+)\s+(\w+)\s*(=([^;]+))?;)'
 
@@ -47,13 +53,14 @@ def main():
     #print("java class files of interest: \n {} \n".format(classes))
     #print("manifests: \n {} \n".format(analysisfiles['manifests']))
 
-    for file in analysisfiles['classfiles']:
-    #file = analysisfiles['classfiles'][7]
-        file_analysis(file, args.a)
-    #file_analysis(analysisfiles['classfiles'][2], args.a)
+    #for file in analysisfiles['classfiles']:
+    file_analysis(analysisfiles['classfiles'][2], args.a)
+        #file_analysis(file, args.a)
+    print(funcCallGraph)
     #print(leaks)
-    flatten_leaks(leaks)
-    report_leaks(leaks)
+    #flatten_leaks(leaks)
+    #report_leaks(leaks)
+    
 
 def extract_analysisfiles(walk):
     """
@@ -111,6 +118,7 @@ def file_analysis(file, aflag):
         tree = gen_java_ast(code_contents)
         if aflag:
             print_ast(tree)
+        gen_func_call_graph(file, tree)
         lifecycle_nodes = get_lifecycle_nodes(tree)
         static_fields = find_leak_preconditions(tree, lifecycle_nodes, file)
         find_leak_fixes(tree, lifecycle_nodes, static_fields, file)
@@ -461,6 +469,25 @@ def process_anonymousclass(tree, file):
                     break
 
                 startPos -= 1
+
+def gen_func_call_graph(file, tree):
+    # funcCallGraph[file][class][method] = {}
+
+    for path, classNode in tree.filter(javalang.tree.ClassDeclaration):
+        funcCallGraph[file][classNode.name] = dict()
+
+        for path, method in classNode.filter(javalang.tree.MethodDeclaration):
+            funcCallGraph[file][classNode.name][method.name] = set()
+
+    for path, classNode in tree.filter(javalang.tree.ClassDeclaration):
+        for path, method in classNode.filter(javalang.tree.MethodDeclaration):
+            for path, call in method.filter(javalang.tree.MethodInvocation):
+                call_name = call.member
+                if call_name in funcCallGraph[file][classNode.name]:
+                    funcCallGraph[file][classNode.name][method.name].add(call_name)
+
+
+
 
 def build_sym_table(tree) :
     """
