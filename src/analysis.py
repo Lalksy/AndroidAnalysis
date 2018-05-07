@@ -15,7 +15,7 @@ all_files = defaultdict(dict)
 #    key2: name assoc with leak
 leaks = defaultdict(dict)
 
-# stores the outer classes info for field declarations 
+# stores the outer classes info for field declarations
 # key: field declarations
 # value: a list holding outer classes info [class name, class line number, file of this class]
 outerClasses = defaultdict(list)
@@ -25,6 +25,8 @@ outerClasses = defaultdict(list)
 #
 # functionCallGraph[file][class][class method] = set(), where the set stores all the class's own methods being called
 funcCallGraph = defaultdict(dict)
+
+methodTable = defaultdict(dict)
 
 # RE picks up static field declarations
 staticfielddecl = '(static\s+(\w+)\s+(\w+)\s*(=([^;]+))?;)'
@@ -53,14 +55,14 @@ def main():
     #print("java class files of interest: \n {} \n".format(classes))
     #print("manifests: \n {} \n".format(analysisfiles['manifests']))
 
-    #for file in analysisfiles['classfiles']:
-    file_analysis(analysisfiles['classfiles'][2], args.a)
-        #file_analysis(file, args.a)
-    print(funcCallGraph)
+    for file in analysisfiles['classfiles']:
+    #file_analysis(analysisfiles['classfiles'][3], args.a)
+        file_analysis(file, args.a)
+    #print(funcCallGraph)
     #print(leaks)
-    #flatten_leaks(leaks)
-    #report_leaks(leaks)
-    
+    flatten_leaks(leaks)
+    report_leaks(leaks)
+
 
 def extract_analysisfiles(walk):
     """
@@ -116,11 +118,15 @@ def file_analysis(file, aflag):
         code_contents = fd.read()
         #print(code_contents)
         tree = gen_java_ast(code_contents)
+        gen_func_call_graph(file, tree)
+        build_method_table(file, tree)
         if aflag:
             print_ast(tree)
-        gen_func_call_graph(file, tree)
+            print_function_call_graph()
         lifecycle_nodes = get_lifecycle_nodes(tree)
+        listener_nodes = get_listener_nodes(tree)
         static_fields = find_leak_preconditions(tree, lifecycle_nodes, file)
+        find_leak_updates(tree, listener_nodes, static_fields, file)
         find_leak_fixes(tree, lifecycle_nodes, static_fields, file)
 
 def gen_java_ast(code_contents):
@@ -144,6 +150,17 @@ def print_ast(tree):
         for i in range(len(path)):
             spacestr+="    "
         print("{}{} {}".format(spacestr, node, node.position))
+
+def print_function_call_graph():
+    for f,v in funcCallGraph.items():
+        print(f[f.rfind('/'):])
+        for mthod, calls in v.items():
+            print("        {} calls:".format(mthod))
+            if(calls):
+                for call in calls:
+                    print("            ",call)
+            else:
+                print("            None")
 
 def print_2d_dict(d):
     for k,v in d.items():
@@ -211,6 +228,21 @@ def get_lifecycle_nodes(tree):
             lifecycle_nodes[node.name] = node
     return lifecycle_nodes
 
+def get_listener_nodes(tree):
+    listener_nodes = []
+    for path, node in tree.filter(javalang.tree.MethodInvocation):
+        if(node.member.find('Listener') > -1):
+            #print("Listener ",node.member)
+            start = node.member.find('set')+3
+            end = node.member.find('Listener')
+            handler_name = node.member[start:end]
+            handler_name = handler_name[0].lower()+handler_name[1:]
+            for p,n in node.filter(javalang.tree.MethodDeclaration):
+                if n.name == handler_name:
+                    #print("Found handler ", handler_name, n.position)
+                    listener_nodes.append(n)
+    return listener_nodes
+
 def find_leak_preconditions(tree, lifecycle_nodes, file):
     """
     tree: javalang CompilationUnit
@@ -232,18 +264,41 @@ def find_leak_preconditions(tree, lifecycle_nodes, file):
     for method in allocation_cycles:
         if method in lifecycle_nodes.keys():
             node = lifecycle_nodes[method]
-            assigns = find_static_assignments(node, static_fields, file)
+            assigns = find_static_assignments_per_node(node, static_fields, file)
             threads = find_thread_start(node, file)
-            regs = find_registers(tree, file)
+            regs = find_registers(node, file)
+            for n in funcCallGraph[file][method]:
+                find_static_assignments_per_node(methodTable[file][n], static_fields, file)
+                find_thread_start(methodTable[file][n], file)
+                find_registers(methodTable[file][n], file)
     return static_fields
+
+def find_leak_updates(tree, listeners, static_fields, file):
+        process_anonymousclass(tree, file)
+        process_innerclass(tree,file)
+
+        # analyze the first half of lifecycle
+        for node in listeners:
+            assigns = find_static_assignments_per_node(node, static_fields, file)
+            threads = find_thread_start(node, file)
+            regs = find_registers(node, file)
+            for n in funcCallGraph[file][node.name]:
+                find_static_assignments_per_node(methodTable[file][n], static_fields, file)
+                find_thread_start(methodTable[file][n], file)
+                find_registers(methodTable[file][n], file)
+
 
 def find_leak_fixes(tree, lifecycle_nodes, static_fields, file):
     for method in deallocation_cycles:
         if method in lifecycle_nodes.keys():
             node = lifecycle_nodes[method]
-            assigns = find_static_assignments(node, static_fields, file)
+            assigns = find_static_assignments_per_node(node, static_fields, file)
             threads = find_thread_stop(node, file)
-            find_unregisters(tree, file)
+            find_unregisters(node, file)
+            for n in funcCallGraph[file][method]:
+                find_static_assignments_per_node(methodTable[file][n], static_fields, file)
+                find_thread_stop(methodTable[file][n], file)
+                find_unregisters(methodTable[file][n], file)
 
 def find_fields(tree, file) :
     """
@@ -257,7 +312,7 @@ def find_fields(tree, file) :
     for path, classnode in tree.filter(javalang.tree.ClassDeclaration):
         outer_pos = classnode.position[0]
         outer_name = classnode.name
-        
+
         for path, node in classnode.filter(javalang.tree.FieldDeclaration):
             if(type(node.type) == javalang.tree.ReferenceType):
                 fields.append((node.declarators[0].name, node.declarators[0].initializer, node.position))
@@ -364,7 +419,7 @@ def find_static_fields_from_name(tree, file):
             static_fields.append((name, "STATIC FIELD", init, linenum))
     return static_fields
 
-def find_static_assignments(tree, static_fields, file):
+def find_static_assignments_per_node(tree, static_fields, file):
     """
     tree: javalang AST node
     static_fields: list of static fields to track state for
@@ -474,20 +529,34 @@ def gen_func_call_graph(file, tree):
     # funcCallGraph[file][class][method] = {}
 
     for path, classNode in tree.filter(javalang.tree.ClassDeclaration):
-        funcCallGraph[file][classNode.name] = dict()
-
         for path, method in classNode.filter(javalang.tree.MethodDeclaration):
-            funcCallGraph[file][classNode.name][method.name] = set()
+            funcCallGraph[file][method.name] = set()
 
     for path, classNode in tree.filter(javalang.tree.ClassDeclaration):
         for path, method in classNode.filter(javalang.tree.MethodDeclaration):
             for path, call in method.filter(javalang.tree.MethodInvocation):
+                if(call.member == 'saveFullScreen'):
+                    #print(call.member, call.position)
+                    #print(path)
+                    pass
                 call_name = call.member
-                if call_name in funcCallGraph[file][classNode.name]:
-                    funcCallGraph[file][classNode.name][method.name].add(call_name)
+                if call_name in funcCallGraph[file]:
+                    funcCallGraph[file][method.name].add(call_name)
+
+                    # following names. Leaving out
+                  # args = []
+                    #for arg in call.children[5]:
+                        #argnm = ''
+                        #for p, n in arg.filter(javalang.tree.MemberReference):
+                            #argnm = n.member
+                        #args.append(argnm)
 
 
-
+def build_method_table(file, tree):
+    for path, classNode in tree.filter(javalang.tree.ClassDeclaration):
+        for path, method in classNode.filter(javalang.tree.MethodDeclaration):
+            methodTable[file][method.name] = method
+            #print_ast(method)
 
 def build_sym_table(tree) :
     """
