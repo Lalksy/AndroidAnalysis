@@ -15,6 +15,11 @@ all_files = defaultdict(dict)
 #    key2: name assoc with leak
 leaks = defaultdict(dict)
 
+# stores the outer classes info for field declarations 
+# key: field declarations
+# value: a list holding outer classes info [class name, class line number, file of this class]
+outerClasses = defaultdict(list)
+
 # RE picks up static field declarations
 staticfielddecl = '(static\s+(\w+)\s+(\w+)\s*(=([^;]+))?;)'
 
@@ -45,6 +50,8 @@ def main():
     for file in analysisfiles['classfiles']:
     #file = analysisfiles['classfiles'][7]
         file_analysis(file, args.a)
+    #file_analysis(analysisfiles['classfiles'][2], args.a)
+    #print(leaks)
     flatten_leaks(leaks)
     report_leaks(leaks)
 
@@ -147,7 +154,15 @@ def flatten_leaks(d):
                         continue
                     known_reference = False
                     for path, node in v2[1].filter(javalang.tree.This):
-                        warning = "Warning: static field {} likely leaks a reference (line {}) to enclosing activity class.".format(k2, v2[2])
+                        outerclass_file = outerClasses[k2][2]
+                        outerclass_pos = outerClasses[k2][1]
+                        outerclass_line = all_files[outerclass_file][outerclass_pos]
+                        outerclass_name = outerClasses[k2][0]
+
+                        if "activity" in outerclass_line.lower():
+                            warning = "Warning: static field {} likely leaks a reference (line {}) to enclosing class {} (line {}) which is very likely an activity class".format(k2, v2[2], outerclass_name, outerclass_pos)
+                        else:
+                            warning = "Warning: static field {} likely leaks a reference (line {}) to enclosing class.".format(k2, v2[2])
                         v2[1] = warning
                         known_reference = True
                     if(not known_reference):
@@ -222,7 +237,7 @@ def find_leak_fixes(tree, lifecycle_nodes, static_fields, file):
             threads = find_thread_stop(node, file)
             find_unregisters(tree, file)
 
-def find_fields(tree) :
+def find_fields(tree, file) :
     """
     tree: javaland AST
     returns:
@@ -230,12 +245,18 @@ def find_fields(tree) :
                 (name, initializer value, linenumber in file)
     """
     fields = []
-    for path, node in tree.filter(javalang.tree.FieldDeclaration):
-        if(type(node.type) == javalang.tree.ReferenceType):
-            fields.append((node.declarators[0].name, node.declarators[0].initializer, node.position))
-            #print("Name={} dimensions={} initializer={} {} {}".format(node.declarators[0].name, \
-            #node.declarators[0].dimensions, node.declarators[0].initializer,\
-            #node.type, node.type.arguments))
+
+    for path, classnode in tree.filter(javalang.tree.ClassDeclaration):
+        outer_pos = classnode.position[0]
+        outer_name = classnode.name
+        
+        for path, node in classnode.filter(javalang.tree.FieldDeclaration):
+            if(type(node.type) == javalang.tree.ReferenceType):
+                fields.append((node.declarators[0].name, node.declarators[0].initializer, node.position))
+                outerClasses[node.declarators[0].name] = [outer_name, outer_pos, file]
+                #print("Name={} dimensions={} initializer={} {} {}".format(node.declarators[0].name, \
+                #node.declarators[0].dimensions, node.declarators[0].initializer,\
+                #node.type, node.type.arguments))
     return fields
 
 def find_thread_start(tree, file) :
@@ -325,7 +346,7 @@ def find_static_fields_from_name(tree, file):
     returns: list of fields that are delared as static
              (name, initializer, linnumber in file)
     """
-    names = find_fields(tree)
+    names = find_fields(tree, file)
     static_fields = []
     static_pat = re.compile('((\w*\s+)*)static ')
     for name, init, pos in names:
