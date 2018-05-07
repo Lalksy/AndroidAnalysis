@@ -29,6 +29,7 @@ pattern_types = ['STATIC FIELD', 'ANON THREAD', 'THREAD']
 # Our toplevel driver
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('-a', help="print ASTs")
     parser.add_argument("app_dir", type=str, help="a pathanme")
     args = parser.parse_args()
 
@@ -43,7 +44,7 @@ def main():
 
     for file in analysisfiles['classfiles']:
     #file = analysisfiles['classfiles'][7]
-        file_analysis(file)
+        file_analysis(file, args.a)
     flatten_leaks(leaks)
     report_leaks(leaks)
 
@@ -96,12 +97,13 @@ def find_java_decls(file):
                     print(ass[0][0])
                     staticfields[s] = ass[0][1]
 
-def file_analysis(file):
+def file_analysis(file, aflag):
     with open(file, 'r') as fd:
         code_contents = fd.read()
         #print(code_contents)
         tree = gen_java_ast(code_contents)
-        #print_ast(tree)
+        if aflag:
+            print_ast(tree)
         lifecycle_nodes = get_lifecycle_nodes(tree)
         static_fields = find_leak_preconditions(tree, lifecycle_nodes, file)
         find_leak_fixes(tree, lifecycle_nodes, static_fields, file)
@@ -138,8 +140,8 @@ def print_2d_dict(d):
 def flatten_leaks(d):
     for k,v in d.items():
         for k2, v2 in v.items():
-            if v2[0] == 'STATIC FIELD':
-                if(v2[1]):
+            if(v2[1]):
+                if v2[0] == 'STATIC FIELD':
                     if(type(v2[1]) == javalang.tree.Literal):
                         v2[1] = None
                         continue
@@ -152,13 +154,14 @@ def flatten_leaks(d):
                         warning = "Warning: use of static field {} (line {}) not advisable.".format(k2, v2[2])
                         v2[1] = warning
 
-            if v2[0] == 'THREAD':
-                if(v2[1]):
+                if v2[0] == 'THREAD':
                     warning = "Warning: thread started (line {}) but not stopped. Thread resource possibly leaked.".format(v2[2])
                     v2[1] = warning
-            if v2[0] == 'ANON THREAD':
-                if(v2[1]):
+                if v2[0] == 'ANON THREAD':
                     warning = "Warning: anonymous thread started (line {}) but not stopped. Thread resource possibly leaked.".format(v2[2])
+                    v2[1] = warning
+                if v2[0] == 'LISTENER':
+                    warning = "Warning: listener registered (line {}) but not unregistered after onPause(). Resource possibly leaked.".format(v2[2])
                     v2[1] = warning
 
 
@@ -206,28 +209,18 @@ def find_leak_preconditions(tree, lifecycle_nodes, file):
     for method in allocation_cycles:
         if method in lifecycle_nodes.keys():
             node = lifecycle_nodes[method]
-            assigns = find_static_assignments(node, static_fields)
-            #print(assigns)
-            # update pattern state
-            for n,t,v,l in assigns:
-                leaks[file][n] = [t,v,l]
+            assigns = find_static_assignments(node, static_fields, file)
             threads = find_thread_start(node, file)
-            for n,t,v,l in threads:
-                leaks[file][n] = [t,v,l]
+            regs = find_registers(tree, file)
     return static_fields
 
 def find_leak_fixes(tree, lifecycle_nodes, static_fields, file):
     for method in deallocation_cycles:
         if method in lifecycle_nodes.keys():
             node = lifecycle_nodes[method]
-            assigns = find_static_assignments(node, static_fields)
-            #print(assigns)
-            # update pattern state
-            for n,t,v,l in assigns:
-                leaks[file][n] = [t,i,l]
+            assigns = find_static_assignments(node, static_fields, file)
             threads = find_thread_stop(node, file)
-            for n,t,v,l in threads:
-                leaks[file][n] = [t,v,l]
+            find_unregisters(tree, file)
 
 def find_fields(tree) :
     """
@@ -252,7 +245,7 @@ def find_thread_start(tree, file) :
              (leak pattern name, type leaked, linenumber)
     """
     thread_pos = []
-    start_inovoc_pattern = re.compile('([\w\(\)]+)\.start')
+    start_inovoc_pattern = re.compile('([\w\(\)\.]+)\.start')
     for path, node in tree.filter(javalang.tree.MethodInvocation):
         if (node.member == 'start'):
             line = all_files[file][node.position[0]]
@@ -262,7 +255,28 @@ def find_thread_start(tree, file) :
                 pat_type = "ANON THREAD"
             leak_pattern_name = start_inovoc_pattern.findall(line)[0]
             thread_pos.append((leak_pattern_name, pat_type, "THREAD", node.position[0]))
+
+    for n,t,v,l in thread_pos:
+        leaks[file][n] = [t,v,l]
     return thread_pos
+
+def find_registers(tree, file) :
+    """
+    tree: javalang AST node
+    returns: list of listeners et al registered in the node
+             (leak pattern name, type leaked, linenumber)
+    """
+    regs = []
+    start_inovoc_pattern = re.compile('([\w\(\)\.]+)\.register')
+    for path, node in tree.filter(javalang.tree.MethodInvocation):
+        if (node.member == 'register'):
+            line = all_files[file][node.position[0]]
+            pat_type = "LISTENER"
+            leak_pattern_name = start_inovoc_pattern.findall(line)[0]
+            regs.append((leak_pattern_name, pat_type, "LISTENER", node.position[0]))
+    for n,t,v,l in regs:
+        leaks[file][n] = [t,v,l]
+    return regs
 
 def find_thread_stop(tree, file) :
     """
@@ -271,7 +285,7 @@ def find_thread_stop(tree, file) :
              (leak pattern name, type leaked, linenumber)
     """
     thread_pos = []
-    stop_inovoc_pattern = re.compile('([\w\(\)]+)\.interrupt')
+    stop_inovoc_pattern = re.compile('([\w\(\)\.]+)\.interrupt')
     for path, node in tree.filter(javalang.tree.MethodInvocation):
         if (node.member == 'interrupt'):
             line = all_files[file][node.position[0]]
@@ -282,7 +296,27 @@ def find_thread_stop(tree, file) :
                 start = 0
             leak_pattern_name = stop_inovoc_pattern.findall(line)[0]
             thread_pos.append((leak_pattern_name, pat_type, None, node.position[0]))
+    for n,t,v,l in thread_pos:
+        leaks[file][n] = [t,v,l]
     return thread_pos
+
+def find_unregisters(tree, file) :
+    """
+    tree: javalang AST node
+    returns: list of listeners et al registered in the node
+             (leak pattern name, type leaked, linenumber)
+    """
+    regs = []
+    start_inovoc_pattern = re.compile('([\w\(\)\.]+)\.unregister')
+    for path, node in tree.filter(javalang.tree.MethodInvocation):
+        if (node.member == 'unregister'):
+            line = all_files[file][node.position[0]]
+            pat_type = "LISTENER"
+            leak_pattern_name = start_inovoc_pattern.findall(line)[0]
+            regs.append((leak_pattern_name, pat_type, None, node.position[0]))
+    for n,t,v,l in regs:
+        leaks[file][n] = [t,v,l]
+    return regs
 
 def find_static_fields_from_name(tree, file):
     """
@@ -301,7 +335,7 @@ def find_static_fields_from_name(tree, file):
             static_fields.append((name, "STATIC FIELD", init, linenum))
     return static_fields
 
-def find_static_assignments(tree, static_fields):
+def find_static_assignments(tree, static_fields, file):
     """
     tree: javalang AST node
     static_fields: list of static fields to track state for
@@ -314,6 +348,10 @@ def find_static_assignments(tree, static_fields):
             ref = node.expressionl
             if ref.member in [f[0] for f in static_fields]:
                 assignments.append((ref.member, "STATIC FIELD", node.value, ref.position[0]))
+
+    for n,t,v,l in assignments:
+        leaks[file][n] = [t,v,l]
+
     return assignments
 
 def process_innerclass(tree, file):
