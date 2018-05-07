@@ -107,7 +107,7 @@ def file_analysis(file):
         code_contents = fd.read()
         #print(code_contents)
         tree = gen_java_ast(code_contents)
-        #print_ast(tree)
+        print_ast(tree)
         lifecycle_nodes = get_lifecycle_nodes(tree)
         static_fields = find_leak_preconditions(tree, lifecycle_nodes, file)
         find_leak_fixes(tree, lifecycle_nodes, static_fields, file)
@@ -146,6 +146,9 @@ def flatten_leaks(d):
         for k2, v2 in v.items():
             if v2[0] == 'STATIC FIELD':
                 if(v2[1]):
+                    if(type(v2[1]) == javalang.tree.Literal):
+                        v2[1] = None
+                        continue
                     for path, node in v2[1].filter(javalang.tree.This):
                         v2[0] = 'STATIC FIELD HIGH WARNING'
                         v2[1] = 'this'
