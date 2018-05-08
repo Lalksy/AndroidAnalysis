@@ -371,16 +371,16 @@ def find_thread_stop(tree, file) :
              (leak pattern name, type leaked, linenumber)
     """
     thread_pos = []
-    stop_inovoc_pattern = re.compile('([\w\(\)\.]+)\.(interrupt|stop)')
+    stop_inovoc_pattern = re.compile('([\w\(\)\.]+)\.(interrupt|stop|close)')
     for path, node in tree.filter(javalang.tree.MethodInvocation):
-        if (node.member == 'interrupt') or (node.member == 'stop'):
+        if (node.member == 'interrupt') or (node.member == 'stop') or (node.member == 'close'):
             line = all_files[file][node.position[0]]
             pat_type = "THREAD"
             if (javalang.tree.ClassCreator == type(path[-2])): # Parent is ClassCreator
                 #print("Thread is in abstract class. Likely leak at ", node.position[0])
                 pat_type = "ANON THREAD"
                 start = 0
-            leak_pattern_name = stop_inovoc_pattern.findall(line)[0]
+            leak_pattern_name = stop_inovoc_pattern.findall(line)[0][0]
             thread_pos.append((leak_pattern_name, pat_type, None, node.position[0]))
     for n,t,v,l in thread_pos:
         leaks[file][n] = [t,v,l]
