@@ -1,0 +1,19 @@
+Class: /FixedThreadLeakActivity.java: 
+
+
+Class: /LeakActivityToThreadActivity.java: 
+
+
+Class: /LeakThreadsActivity.java: 
+
+
+Class: /LeakActivityToSingletonActivity.java: 
+
+
+Class: /LeakActivityToStaticInnerClassActivity.java: 
+    * Warning: class LeakActivityToStaticInnerClassActivity (line 8) has a non-static inner class SomeInnerClass (line 20), and there is a high risk of memory leak because LeakActivityToStaticInnerClassActivity is likely an activity class and SomeInnerClass holds a reference to it
+
+
+Class: /SomeSingletonManager.java: 
+
+

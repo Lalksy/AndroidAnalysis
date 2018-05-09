@@ -1,0 +1,32 @@
+Class: /FixedThreadLeakActivity.java: 
+
+
+Class: /LeakActivityToAsyncTaskActivity.java: 
+    * Warning: class LeakActivityToAsyncTaskActivity (line 10) has an anonymous inner class (line 17), and there is a high risk of memory leak because LeakActivityToAsyncTaskActivity is likely an activity class and the anonymous inner class holds a reference to it
+
+
+Class: /LeakActivityToThreadActivity.java: 
+    * Warning: class LeakActivityToThreadActivity (line 9) has a non-static inner class MyThread (line 21), and there is a high risk of memory leak because LeakActivityToThreadActivity is likely an activity class and MyThread holds a reference to it
+    * Warning: anonymous thread started (line 16) but not stopped. Thread resource possibly leaked.
+
+
+Class: /LeakThreadsActivity.java: 
+    * Warning: thread started (line 18) but not stopped. Thread resource possibly leaked.
+
+
+Class: /LeakActivityToStaticInnerClassActivity.java: 
+    * Warning: use of static field someInnerClass (line 18) not advisable.
+    * Warning: class LeakActivityToStaticInnerClassActivity (line 8) has a non-static inner class SomeInnerClass (line 22), and there is a high risk of memory leak because LeakActivityToStaticInnerClassActivity is likely an activity class and SomeInnerClass holds a reference to it
+
+
+Class: /LeakActivityToStaticVariableActivity.java: 
+    * Warning: static field activity likely leaks a reference (line 22) to enclosing class LeakActivityToStaticVariableActivity (line 10) which is very likely an activity class
+
+
+Class: /LeakActivityToStaticViewActivity.java: 
+    * Warning: static field label likely leaks a reference (line 18) to enclosing class LeakActivityToStaticViewActivity (line 9) which is very likely an activity class
+
+
+Class: /SomeSingletonManager.java: 
+
+
